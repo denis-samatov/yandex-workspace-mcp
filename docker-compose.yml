@@ -1,0 +1,9 @@
+services:
+  yandex-workspace-mcp:
+    build: .
+    env_file:
+      - .env
+    # Only relevant if using streamable-http and we map a port. For stdio, it runs as a one-shot or attached process.
+    # We leave this generic for now.
+    environment:
+      - MCP_TRANSPORT=stdio
