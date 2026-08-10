@@ -1,8 +1,9 @@
 import posixpath
 import unicodedata
 import urllib.parse
-from typing import List
+
 from ..models.errors import InvalidPath
+
 
 def normalize_path(path: str) -> str:
     """
@@ -27,7 +28,7 @@ def normalize_path(path: str) -> str:
         
     return clean_path
 
-def is_path_allowed(path: str, allowed_roots: List[str]) -> bool:
+def is_path_allowed(path: str, allowed_roots: list[str]) -> bool:
     """
     Checks if a normalized path is contained within any of the allowed roots.
     """
@@ -42,13 +43,12 @@ def is_path_allowed(path: str, allowed_roots: List[str]) -> bool:
         root_parts = norm_root.strip("/").split("/")
         
         # Check if root_parts is a prefix of path_parts
-        if len(path_parts) >= len(root_parts):
-            if path_parts[:len(root_parts)] == root_parts:
-                return True
+        if len(path_parts) >= len(root_parts) and path_parts[:len(root_parts)] == root_parts:
+            return True
                 
     return False
 
-def validate_path(path: str, allowed_roots: List[str]) -> str:
+def validate_path(path: str, allowed_roots: list[str]) -> str:
     """
     Validates a path and returns the normalized path. Raises InvalidPath if not allowed.
     """

@@ -1,27 +1,35 @@
-from typing import Any, Dict, List, Optional
-from ..clients.disk import YandexDiskClient
-from ..policies.paths import validate_path
-from ..models.errors import PermissionDenied
+from typing import Any
+
 import structlog
+
+from ..clients.disk import YandexDiskClient
+from ..models.errors import PermissionDenied
+from ..policies.paths import validate_path
 
 logger = structlog.get_logger()
 
 class DiskService:
-    def __init__(self, client: YandexDiskClient, allowed_roots: List[str], can_read: bool, can_write: bool, can_delete: bool):
+    def __init__(self, client: YandexDiskClient, allowed_roots: list[str], can_read: bool, can_write: bool, can_delete: bool):
         self.client = client
         self.allowed_roots = allowed_roots
         self.can_read = can_read
         self.can_write = can_write
         self.can_delete = can_delete
 
-    async def list_folder(self, path: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    async def list_folder(self, path: str, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         if not self.can_read:
             raise PermissionDenied("Disk read is disabled.")
         valid_path = validate_path(path, self.allowed_roots)
         logger.info("disk.list", path=valid_path)
         return await self.client.get_metadata(valid_path, limit=limit, offset=offset)
 
-    async def get_metadata(self, path: str) -> Dict[str, Any]:
+    async def search(self, query: str, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+        if not self.can_read:
+            raise PermissionDenied("Disk read is disabled.")
+        logger.info("disk.search", query=query)
+        return await self.client.search(query, limit=limit, offset=offset)
+
+    async def get_metadata(self, path: str) -> dict[str, Any]:
         if not self.can_read:
             raise PermissionDenied("Disk read is disabled.")
         valid_path = validate_path(path, self.allowed_roots)
@@ -41,7 +49,7 @@ class DiskService:
         valid_path = validate_path(path, self.allowed_roots)
         return await self.client.get_download_url(valid_path)
 
-    async def create_folder(self, path: str) -> Dict[str, Any]:
+    async def create_folder(self, path: str) -> dict[str, Any]:
         if not self.can_write:
             raise PermissionDenied("Disk write is disabled.")
         valid_path = validate_path(path, self.allowed_roots)
@@ -50,7 +58,7 @@ class DiskService:
         resp.raise_for_status()
         return {"status": "created", "path": valid_path}
 
-    async def copy(self, from_path: str, to_path: str) -> Dict[str, Any]:
+    async def copy(self, from_path: str, to_path: str) -> dict[str, Any]:
         if not self.can_write:
             raise PermissionDenied("Disk write is disabled.")
         valid_from = validate_path(from_path, self.allowed_roots)
@@ -60,7 +68,7 @@ class DiskService:
         resp.raise_for_status()
         return {"status": "copied", "from": valid_from, "to": valid_to}
 
-    async def move(self, from_path: str, to_path: str) -> Dict[str, Any]:
+    async def move(self, from_path: str, to_path: str) -> dict[str, Any]:
         if not self.can_write:
             raise PermissionDenied("Disk write is disabled.")
         valid_from = validate_path(from_path, self.allowed_roots)
@@ -70,7 +78,7 @@ class DiskService:
         resp.raise_for_status()
         return {"status": "moved", "from": valid_from, "to": valid_to}
 
-    async def delete(self, path: str, permanently: bool = False) -> Dict[str, Any]:
+    async def delete(self, path: str, permanently: bool = False) -> dict[str, Any]:
         if not self.can_delete:
             raise PermissionDenied("Disk delete is disabled.")
         valid_path = validate_path(path, self.allowed_roots)
@@ -79,19 +87,12 @@ class DiskService:
         resp.raise_for_status()
         return {"status": "deleted", "path": valid_path}
 
-    async def upload(self, path: str, content: str) -> Dict[str, Any]:
+    async def upload(self, path: str, content: str) -> dict[str, Any]:
         if not self.can_write:
             raise PermissionDenied("Disk write is disabled.")
         valid_path = validate_path(path, self.allowed_roots)
         logger.info("disk.upload", path=valid_path)
-        
-        # 1. Get upload URL
-        resp = await self.client._request("GET", "/resources/upload", params={"path": valid_path, "overwrite": "true"})
-        resp.raise_for_status()
-        upload_url = resp.json().get("href")
-        
-        # 2. Upload content
-        upload_resp = await self.client.client.put(upload_url, content=content.encode("utf-8"))
-        upload_resp.raise_for_status()
+        # Use safe client logic
+        await self.client.upload_file_text(valid_path, content)
         
         return {"status": "uploaded", "path": valid_path}

@@ -1,40 +1,63 @@
-from typing import List, Optional
-from ..models.common import ResourceRef, SearchResult, FetchResult
+
+import structlog
+
+from ..models.common import FetchResult, ResourceRef, SearchResult
 from .disk import DiskService
 from .wiki import WikiService
-import structlog
 
 logger = structlog.get_logger()
 
 class WorkspaceService:
-    def __init__(self, disk: Optional[DiskService], wiki: Optional[WikiService]):
+    def __init__(self, disk: DiskService | None, wiki: WikiService | None):
         self.disk = disk
         self.wiki = wiki
 
     async def search(self, query: str, limit: int = 20) -> SearchResult:
+        import asyncio
         logger.info("workspace.search", query=query)
-        results: List[ResourceRef] = []
+        results: list[ResourceRef] = []
         
-        # Search Wiki
-        if self.wiki and self.wiki.can_read:
-            try:
-                w_res = await self.wiki.search(query, limit=limit)
-                for item in w_res.get("results", []):
-                    results.append(ResourceRef(
-                        id=f"wiki:page:{item.get('slug', '')}",
-                        source="wiki",
-                        title=item.get("title", ""),
-                        url=item.get("url"), # Need to ensure url is canonical
-                        type="page",
-                        modified_at=item.get("modifiedAt"),
-                        locator=item.get("slug")
-                    ))
-            except Exception as e:
-                logger.error("workspace.search.wiki_failed", error=str(e))
-
-        # Search Disk (Since public API doesn't have true full-text search easily, we might just list or search by name. For now, skip or implement a stub if no API exists)
-        # Assuming we can filter flat_files if we implemented it, or use the /public endpoint if it supports query. 
-        # For this MVP, we will only aggregate what is available.
+        async def search_wiki():
+            if self.wiki and self.wiki.can_read:
+                try:
+                    w_res = await self.wiki.search(query, limit=limit)
+                    return w_res.get("results", [])
+                except Exception as e:  # noqa: BLE001
+                    logger.error("workspace.search.wiki_failed", error=str(e))
+            return []
+            
+        async def search_disk():
+            if self.disk and self.disk.can_read:
+                try:
+                    d_res = await self.disk.search(query, limit=limit)
+                    return d_res.get("items", [])
+                except Exception as e:  # noqa: BLE001
+                    logger.error("workspace.search.disk_failed", error=str(e))
+            return []
+            
+        wiki_items, disk_items = await asyncio.gather(search_wiki(), search_disk())
+        
+        for item in wiki_items:
+            results.append(ResourceRef(
+                id=f"wiki:page:{item.get('slug', '')}",
+                source="wiki",
+                title=item.get("title", ""),
+                url=item.get("url"),
+                type="page",
+                modified_at=item.get("modifiedAt"),
+                locator=item.get("slug")
+            ))
+            
+        for item in disk_items:
+            results.append(ResourceRef(
+                id=f"disk:path:{item.get('path', '')}",
+                source="disk",
+                title=item.get("name", ""),
+                url=item.get("file"), # Or public_url if available
+                type="file",
+                modified_at=item.get("modified", ""),
+                locator=item.get("path", "")
+            ))
         
         return SearchResult(results=results[:limit])
 
@@ -48,7 +71,7 @@ class WorkspaceService:
             return FetchResult(
                 id=resource_id,
                 title=page.get("title", ""),
-                text=page.get("body", ""),
+                text=page.get("content", ""),
                 url=page.get("url"),
                 metadata={"source": "wiki", "revision": page.get("revision", {}).get("id")}
             )

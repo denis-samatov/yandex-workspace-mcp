@@ -1,8 +1,11 @@
-import pytest
 from unittest.mock import AsyncMock
-from yandex_workspace_mcp.services.workspace import WorkspaceService
+
+import pytest
+
 from yandex_workspace_mcp.services.disk import DiskService
 from yandex_workspace_mcp.services.wiki import WikiService
+from yandex_workspace_mcp.services.workspace import WorkspaceService
+
 
 @pytest.fixture
 def disk_service():
@@ -19,19 +22,24 @@ async def test_workspace_search(disk_service, wiki_service):
     wiki_service.client.search.return_value = {
         "results": [{"slug": "test", "title": "Test Page", "url": "https://wiki.yandex.ru/test"}]
     }
+    disk_service.client.search.return_value = {
+        "items": [{"name": "test.txt", "path": "/test.txt", "file": "https://downloader..."}]
+    }
     
     svc = WorkspaceService(disk=disk_service, wiki=wiki_service)
     res = await svc.search("test")
     
-    assert len(res.results) == 1
+    assert len(res.results) == 2
     assert res.results[0].id == "wiki:page:test"
     assert res.results[0].source == "wiki"
+    assert res.results[1].id == "disk:path:/test.txt"
+    assert res.results[1].source == "disk"
 
 @pytest.mark.asyncio
 async def test_workspace_fetch_wiki(disk_service, wiki_service):
     wiki_service.client.get_page.return_value = {
         "title": "Test Page",
-        "body": "Hello World",
+        "content": "Hello World",
         "url": "https://wiki.yandex.ru/test",
         "revision": {"id": 123}
     }

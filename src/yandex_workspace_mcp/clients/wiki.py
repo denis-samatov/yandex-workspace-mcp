@@ -1,9 +1,11 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+from ..models.errors import APIError, ResourceNotFound
 from .base import BaseYandexClient
-from ..models.errors import ResourceNotFound, APIError
+
 
 class YandexWikiClient(BaseYandexClient):
-    def __init__(self, token: str, org_id: Optional[str] = None, is_cloud_org: bool = False):
+    def __init__(self, token: str, org_id: str | None = None, is_cloud_org: bool = False):
         headers = {}
         if org_id:
             if is_cloud_org:
@@ -14,15 +16,15 @@ class YandexWikiClient(BaseYandexClient):
         # Wiki supports OAuth token in Authorization header
         super().__init__(token, base_url="https://api.wiki.yandex.net/v1", headers=headers)
 
-    async def get_page(self, slug: str) -> Dict[str, Any]:
-        resp = await self._request("GET", f"/pages/{slug}")
+    async def get_page(self, slug: str) -> dict[str, Any]:
+        resp = await self._request("GET", "/pages", params={"slug": slug, "fields": "content,title,slug,id,revision"})
         if resp.status_code == 404:
             raise ResourceNotFound(f"Wiki page not found: {slug}")
         if resp.status_code != 200:
             raise APIError(f"Wiki API error {resp.status_code}: {resp.text}")
         return resp.json()
 
-    async def search(self, query: str, limit: int = 50, page: int = 1) -> Dict[str, Any]:
+    async def search(self, query: str, limit: int = 50, page: int = 1) -> dict[str, Any]:
         # Yandex Wiki search API
         payload = {
             "query": query,
@@ -34,8 +36,8 @@ class YandexWikiClient(BaseYandexClient):
             raise APIError(f"Wiki Search API error {resp.status_code}: {resp.text}")
         return resp.json()
         
-    async def get_tree(self, slug: str) -> Dict[str, Any]:
-        resp = await self._request("GET", f"/pages/{slug}/tree")
+    async def get_tree(self, slug: str) -> dict[str, Any]:
+        resp = await self._request("GET", "/pages/descendants", params={"slug": slug})
         if resp.status_code == 404:
             raise ResourceNotFound(f"Wiki tree not found: {slug}")
         if resp.status_code != 200:

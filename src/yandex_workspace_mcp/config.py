@@ -1,7 +1,7 @@
+from typing import Any
+
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, SecretStr
-from typing import List, Optional
-import os
 
 
 class Settings(BaseSettings):
@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     yandex_disk_enabled: bool = Field(default=True)
     yandex_wiki_enabled: bool = Field(default=True)
 
-    yandex_oauth_token: Optional[SecretStr] = Field(default=None, description="Global Yandex OAuth Token for local execution mode")
-    yandex_wiki_org_id: Optional[str] = Field(default=None, description="Yandex Wiki Organization ID (X-Org-Id or X-Cloud-Org-Id)")
+    yandex_oauth_token: SecretStr | None = Field(default=None, description="Global Yandex OAuth Token for local execution mode")
+    yandex_wiki_org_id: str | None = Field(default=None, description="Yandex Wiki Organization ID (X-Org-Id or X-Cloud-Org-Id)")
     yandex_wiki_is_cloud_org: bool = Field(default=False, description="Set to True if using Yandex Cloud Organization")
 
     # Permissions
@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     wiki_delete: bool = Field(default=False)
 
     # Allowed Roots
-    disk_allowed_roots: List[str] = Field(default=["/"])
-    wiki_allowed_roots: List[str] = Field(default=["/"])
+    disk_allowed_roots: list[str] = Field(default_factory=list)
+    wiki_allowed_roots: list[str] = Field(default_factory=list)
 
     # Limits
     max_search_results: int = Field(default=50)
@@ -39,10 +39,16 @@ class Settings(BaseSettings):
     max_download_size_mb: int = Field(default=100)
     max_inline_text_size_kb: int = Field(default=512)
 
-    def parse_list(self, val: str | List[str]) -> List[str]:
+    @field_validator("disk_allowed_roots", "wiki_allowed_roots", mode="before")
+    @classmethod
+    def parse_roots(cls, val: Any) -> list[str]:
         if isinstance(val, str):
+            # Parse from comma separated string
             return [x.strip() for x in val.split(",") if x.strip()]
-        return val
+        if isinstance(val, list):
+            return val
+        return []
+
 
 
 def get_settings() -> Settings:

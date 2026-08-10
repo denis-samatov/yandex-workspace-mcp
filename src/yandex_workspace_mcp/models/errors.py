@@ -1,10 +1,8 @@
-from pydantic import BaseModel
-from typing import Optional
 
 class MCPError(Exception):
     """Base exception for all MCP related errors"""
     
-    def __init__(self, message: str, code: int = -32000, data: Optional[dict] = None):
+    def __init__(self, message: str, code: int = -32000, data: dict | None = None):
         super().__init__(message)
         self.message = message
         self.code = code

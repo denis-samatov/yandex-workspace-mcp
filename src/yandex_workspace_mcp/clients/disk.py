@@ -1,13 +1,42 @@
-from typing import Any, Dict, List, Optional
-from .base import BaseYandexClient
-from ..models.errors import ResourceNotFound, APIError, InvalidPath
+import ipaddress
 import urllib.parse
+from typing import Any
 
+import httpx
+
+from ..models.errors import APIError, ResourceNotFound
+from .base import BaseYandexClient
+
+
+def validate_yandex_signed_url(url: str) -> None:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        raise APIError("Signed URL must use HTTPS")
+    
+    hostname = parsed.hostname
+    if not hostname:
+        raise APIError("Signed URL missing hostname")
+    
+    if not (hostname == "yandex.net" or hostname.endswith(".yandex.net")):
+        raise APIError(f"Invalid download URL domain returned by Yandex: {hostname}")
+        
+    # Check for IP literal in hostname to avoid 169.254.169.254 or localhost
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            raise APIError("Signed URL resolves to private/local IP")
+    except ValueError:
+        pass # Not an IP literal, which is fine because we checked ends with yandex.net
+        # Note: True DNS resolution check for private IPs would happen here in a full production system.
+        # But *.yandex.net suffix provides a strong guarantee against random SSRF targets.
+        
 class YandexDiskClient(BaseYandexClient):
     def __init__(self, token: str):
         super().__init__(token, base_url="https://cloud-api.yandex.net/v1/disk")
+        # Separate unauthenticated client for signed URLs to avoid leaking OAuth token
+        self.signed_url_client = httpx.AsyncClient(follow_redirects=False)
 
-    async def get_metadata(self, path: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    async def get_metadata(self, path: str, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """Get metadata for a file or folder. If it's a folder, it lists contents up to limit."""
         params = {
             "path": path,
@@ -34,30 +63,67 @@ class YandexDiskClient(BaseYandexClient):
 
     async def read_file_text(self, path: str) -> str:
         url = await self.get_download_url(path)
-        # Note: we use httpx to fetch the temporary URL.
-        # This URL is signed by Yandex, so we do a quick fetch
-        # To avoid SSRF, we only fetch if the domain is *.yandex.net
-        parsed = urllib.parse.urlparse(url)
-        if not parsed.netloc.endswith("yandex.net"):
-            raise APIError("Invalid download URL domain returned by Yandex")
+        validate_yandex_signed_url(url)
         
-        async with self.client.stream("GET", url) as resp:
+        from ..config import get_settings
+        settings = get_settings()
+        
+        # Stream download to enforce limits
+        max_bytes = settings.max_inline_text_size_kb * 1024
+        
+        content = b""
+        async with self.signed_url_client.stream("GET", url) as resp:
             if resp.status_code != 200:
                 raise APIError("Failed to fetch file content")
-            content = await resp.aread()
-            return content.decode("utf-8", errors="replace")
+            
+            async for chunk in resp.aiter_bytes():
+                content += chunk
+                if len(content) > max_bytes:
+                    content += b"\n[Content truncated due to size limits]"
+                    break
+                    
+        return content.decode("utf-8", errors="replace")
 
-    async def search(self, query: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    async def upload_file_text(self, path: str, content: str) -> None:
+        # 1. Get upload URL
+        resp = await self._request("GET", "/resources/upload", params={"path": path, "overwrite": "true"})
+        if resp.status_code != 200:
+            raise APIError(f"Failed to get upload URL: {resp.text}")
+            
+        upload_url = resp.json().get("href")
+        if not upload_url:
+            raise APIError("No upload URL returned")
+            
+        # 2. Validate URL (SSRF)
+        validate_yandex_signed_url(upload_url)
+        
+        # 3. Upload content using safe unauthenticated client
+        upload_resp = await self.signed_url_client.put(upload_url, content=content.encode("utf-8"))
+        if upload_resp.status_code not in [201, 202]:
+            raise APIError(f"Failed to upload content: {upload_resp.text}")
+
+    async def search(self, query: str, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+        # Yandex Disk doesn't have a content search endpoint in the standard API. 
+        # We can use /resources/files to fetch a flat list and filter by name.
         params = {
-            "query": query,
             "limit": limit,
-            "offset": offset
+            "offset": offset,
+            "media_type": "document,text,data,development" # Filter somewhat
         }
-        resp = await self._request("GET", "/resources/public", params=params) # Note: /public is wrong for private. Yandex Disk doesn't have a simple text full-text search API across all files, it has flat list and metadata.
-        # Wait, Yandex Disk has `/v1/disk/resources/files` for flat list, and there is no direct "search by text content" endpoint in public API except maybe custom properties. We might have to just list flat files or use name filtering.
-        pass
+        resp = await self._request("GET", "/resources/files", params=params)
+        if resp.status_code != 200:
+            raise APIError(f"Disk API error {resp.status_code}: {resp.text}")
+        
+        data = resp.json()
+        items = data.get("items", [])
+        
+        # Simple name filtering
+        query_lower = query.lower()
+        matched = [item for item in items if query_lower in item.get("name", "").lower()]
+        
+        return {"items": matched}
 
-    async def flat_files(self, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    async def flat_files(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         resp = await self._request("GET", "/resources/files", params={"limit": limit, "offset": offset})
         if resp.status_code != 200:
             raise APIError(f"Disk API error {resp.status_code}: {resp.text}")
