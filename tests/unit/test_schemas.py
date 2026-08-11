@@ -47,4 +47,9 @@ async def test_tools_schema_validity(setup_env_and_reload):
         assert isinstance(schema, dict)
         assert schema.get("type") == "object"
         assert "properties" in schema
+        
+        # Test tool annotations
+        if tool.name == "disk_read":
+            assert tool.annotations is not None
+            assert tool.annotations.read_only_hint is True
 

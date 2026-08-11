@@ -17,7 +17,7 @@ class YandexWikiClient(BaseYandexClient):
         super().__init__(token, base_url="https://api.wiki.yandex.net/v1", headers=headers)
 
     async def get_page(self, slug: str) -> dict[str, Any]:
-        resp = await self._request("GET", "/pages", params={"slug": slug, "fields": "content,title,slug,id,revision"})
+        resp = await self._request("GET", "/pages", params={"slug": slug, "fields": "content,title,slug,id"})
         if resp.status_code == 404:
             raise ResourceNotFound(f"Wiki page not found: {slug}")
         if resp.status_code != 200:

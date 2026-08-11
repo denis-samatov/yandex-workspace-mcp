@@ -3,8 +3,9 @@ from typing import Any
 import structlog
 
 from ..clients.wiki import YandexWikiClient
-from ..models.errors import APIError, InvalidPath, PermissionDenied, RevisionConflict
+from ..models.errors import APIError, InvalidPath, PermissionDenied
 from ..policies.paths import validate_path
+from ..security.audit import audit_logger
 
 logger = structlog.get_logger()
 
@@ -52,6 +53,7 @@ class WikiService:
             raise PermissionDenied("Wiki write is disabled.")
         valid_slug = validate_path("/" + slug.strip("/"), self.allowed_roots).strip("/")
         logger.info("wiki.create_page", slug=valid_slug)
+        audit_logger.log("wiki.create_page", slug=valid_slug)
         
         payload = {
             "slug": valid_slug,
@@ -62,30 +64,27 @@ class WikiService:
         resp.raise_for_status()
         return resp.json()
 
-    async def update_page(self, slug: str, expected_revision: int, body: str, title: str | None = None) -> dict[str, Any]:
+    async def update_page(self, slug: str, body: str, title: str | None = None) -> dict[str, Any]:
         if not self.can_write:
             raise PermissionDenied("Wiki write is disabled.")
         valid_slug = validate_path("/" + slug.strip("/"), self.allowed_roots).strip("/")
-        logger.info("wiki.update_page", slug=valid_slug, expected_revision=expected_revision)
+        logger.info("wiki.update_page", slug=valid_slug)
+        audit_logger.log("wiki.update_page", slug=valid_slug)
         
-        # 1. Fetch current page to get its integer ID and current revision
+        # 1. Fetch current page to get its integer ID
         current_page = await self.client.get_page(valid_slug)
         page_id = current_page.get("id")
         if not page_id:
             raise APIError("Wiki page does not have an integer ID")
             
         payload = {
-            "content": body,
-            "version": expected_revision
+            "content": body
         }
         if title:
             payload["title"] = title
             
         # Yandex Wiki uses POST /pages/{page_id} to update, not PUT.
-        # It natively handles concurrent edits via the 'version' parameter and 'allow_merge'.
-        # By default allow_merge is false, which is the exact strict-locking behavior we want.
+        # By default allow_merge is false.
         resp = await self.client._request("POST", f"/pages/{page_id}", json=payload)
-        if resp.status_code == 409:
-            raise RevisionConflict(f"Revision conflict: Expected {expected_revision}")
         resp.raise_for_status()
         return resp.json()

@@ -36,6 +36,10 @@ class YandexDiskClient(BaseYandexClient):
         # Separate unauthenticated client for signed URLs to avoid leaking OAuth token
         self.signed_url_client = httpx.AsyncClient(follow_redirects=False)
 
+    async def close(self):
+        await super().close()
+        await self.signed_url_client.aclose()
+
     async def get_metadata(self, path: str, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """Get metadata for a file or folder. If it's a folder, it lists contents up to limit."""
         params = {

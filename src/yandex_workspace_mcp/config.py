@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     # Transports
     mcp_transport: str = Field(default="stdio", description="MCP transport to use: 'stdio' or 'streamable-http'")
     mcp_host: str = Field(default="127.0.0.1", description="HTTP host for Streamable HTTP")
-    mcp_port: int = Field(default=8000, description="HTTP port for Streamable HTTP")
+    mcp_port: int = Field(default=8000, alias="MCP_PORT")
+    mcp_auth_token: str | None = Field(default=None, alias="MCP_AUTH_TOKEN")
     
     # Yandex Workspace Config
     yandex_disk_enabled: bool = Field(default=True)

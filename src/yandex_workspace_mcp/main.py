@@ -34,12 +34,17 @@ def main():
     if args.transport == "stdio":
         mcp_server.run(transport="stdio")
     elif args.transport == "streamable-http":
+        from mcp.server.transport_security import TransportSecuritySettings
         mcp_server.run(
             transport="streamable-http",
             host=settings.mcp_host,
             port=settings.mcp_port,
             stateless_http=True,
             json_response=True,
+            transport_security=TransportSecuritySettings(
+                enable_dns_rebinding_protection=True,
+                allowed_hosts=["*"] # Can be restricted further in production
+            )
         )
 
 if __name__ == "__main__":

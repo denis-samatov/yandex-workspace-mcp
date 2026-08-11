@@ -38,8 +38,14 @@ YANDEX_WIKI_ORG_ID=your_org_id
 YANDEX_DISK_ENABLED=true
 YANDEX_WIKI_ENABLED=true
 
-# Transport (stdio recommended for standard MCP clients)
+# Transport (stdio or sse)
 MCP_TRANSPORT=stdio
+
+# For SSE / Streamable HTTP
+# MCP_TRANSPORT=sse
+# MCP_HOST=127.0.0.1
+# MCP_PORT=8000
+# MCP_AUTH_TOKEN=your_secure_bearer_token  # Required for auth on SSE endpoints
 
 # Disk Permissions
 DISK_READ=true

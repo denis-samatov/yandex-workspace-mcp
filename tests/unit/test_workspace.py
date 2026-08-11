@@ -22,9 +22,10 @@ async def test_workspace_search(disk_service, wiki_service):
     wiki_service.client.search.return_value = {
         "results": [{"slug": "test", "title": "Test Page", "url": "https://wiki.yandex.ru/test"}]
     }
-    disk_service.client.search.return_value = {
-        "items": [{"name": "test.txt", "path": "/test.txt", "file": "https://downloader..."}]
-    }
+    disk_service.client.flat_files.side_effect = [
+        {"items": [{"name": "test.txt", "path": "/test.txt", "file": "https://downloader..."}]},
+        {"items": []}
+    ]
     
     svc = WorkspaceService(disk=disk_service, wiki=wiki_service)
     res = await svc.search("test")
@@ -40,8 +41,7 @@ async def test_workspace_fetch_wiki(disk_service, wiki_service):
     wiki_service.client.get_page.return_value = {
         "title": "Test Page",
         "content": "Hello World",
-        "url": "https://wiki.yandex.ru/test",
-        "revision": {"id": 123}
+        "url": "https://wiki.yandex.ru/test"
     }
     
     svc = WorkspaceService(disk=disk_service, wiki=wiki_service)
