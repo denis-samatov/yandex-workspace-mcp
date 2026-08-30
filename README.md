@@ -6,9 +6,34 @@ This server provides a safe, unified interface for AI assistants to search, read
 
 ## Features
 
-- **Yandex Disk Integration**: List files, search (via filtering), read metadata, obtain download/upload links, move, copy, delete, and create folders.
-- **Yandex Wiki Integration**: Search pages, read full markdown content, browse page trees, manage attachments, fetch comments, and interact with dynamic tables. Optimistic locking is used to prevent accidental overwrites (revision checking).
-- **Unified Workspace Search**: A single `search_workspace` tool allows agents to query both Disk and Wiki simultaneously.
+- **Yandex Disk Integration**: List files, search (via filtering), read metadata, upload/read text content, move, copy, delete, and create folders.
+- **Yandex Wiki Integration**: Search pages, read full page content, browse page trees, create pages, and update existing pages.
+- **Unified Workspace Search**: `search` and `fetch` let agents query both Disk and Wiki simultaneously.
+
+### Tools
+
+| Tool | Description |
+|---|---|
+| `search` | Search across Yandex Disk and Yandex Wiki |
+| `fetch` | Fetch a canonical resource by ID from Yandex Workspace |
+| `disk_list` | List contents of a folder on Yandex Disk |
+| `disk_get_metadata` | Get metadata for a file or folder on Yandex Disk |
+| `disk_read` | Read text content of a file on Yandex Disk |
+| `disk_upload` | Upload text content to a file on Yandex Disk |
+| `disk_create_folder` | Create a new folder on Yandex Disk |
+| `disk_copy` | Copy a file or folder on Yandex Disk |
+| `disk_move` | Move a file or folder on Yandex Disk |
+| `disk_delete` | Delete a file or folder on Yandex Disk |
+| `wiki_search` | Search Yandex Wiki pages |
+| `wiki_get_page` | Get a Yandex Wiki page by slug |
+| `wiki_get_tree` | Get the tree of pages under a Wiki slug |
+| `wiki_create_page` | Create a new Yandex Wiki page |
+| `wiki_update_page` | Update an existing Yandex Wiki page |
+
+### Limitations
+
+- Wiki attachments, comments, and dynamic tables are **not** supported — only page content (search, read, tree, create, update).
+- `wiki_update_page` does **not** perform optimistic locking / revision checking. It fetches the current page and overwrites its content; two concurrent writers can silently clobber each other's changes. Serialize writes to the same page at the application level if this matters for your use case.
 - **Security-First Architecture**: 
   - Read-only by default.
   - Granular permissions for read, write, and delete operations.
