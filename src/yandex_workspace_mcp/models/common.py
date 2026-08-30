@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ResourceRef(BaseModel):
@@ -12,9 +12,19 @@ class ResourceRef(BaseModel):
     modified_at: str | None = None
     locator: str | None = None
 
+
 class SearchResult(BaseModel):
     results: list[ResourceRef]
     next_cursor: str | None = None
+    partial_failures: dict[str, str] = Field(default_factory=dict)
+    sources: dict[str, "SourceStatus"] = Field(default_factory=dict)
+
+
+class SourceStatus(BaseModel):
+    state: Literal["success", "degraded", "failure"]
+    search_mode: str | None = None
+    error_category: str | None = None
+
 
 class FetchResult(BaseModel):
     id: str
@@ -22,3 +32,6 @@ class FetchResult(BaseModel):
     text: str | None = None
     url: str | None = None
     metadata: dict
+
+
+SearchResult.model_rebuild()

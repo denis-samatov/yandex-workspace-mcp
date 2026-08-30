@@ -1,140 +1,571 @@
+import base64
+import contextlib
+import hmac
+import secrets
+from collections.abc import AsyncIterator, Callable
+from dataclasses import dataclass
+from typing import Any
+from urllib.parse import urlsplit
 
 from mcp.server import MCPServer
 from mcp.server.auth.provider import AccessToken, TokenVerifier
-from mcp.types import ToolAnnotations
+from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
+from mcp.server.transport_security import TransportSecuritySettings
+from pydantic import AnyHttpUrl
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp
 
+from .auth.credentials import StaticCredentialProvider, StoredCredentialProvider
+from .auth.models import YandexIAMCredential, YandexOAuthCredential
+from .auth.oauth import YandexMcpOAuthProvider, YandexOAuthCallback
+from .auth.recovery import (
+    InMemoryRecoveryTokenStore,
+    RecoveryTokenStore,
+    SharedRecoveryTokenStore,
+)
+from .auth.redis_store import RedisTokenStore
+from .auth.scopes import (
+    WorkspacePrincipal,
+    current_principal,
+    effective_static_scopes,
+    scopes_for_permissions,
+)
+from .auth.stores import InMemoryTokenStore
+from .clients.base import RequestCredentials
 from .clients.disk import YandexDiskClient
+from .clients.signed import SignedTransferClient
 from .clients.wiki import YandexWikiClient
-from .config import get_settings
-from .models.common import FetchResult, SearchResult
+from .config import AuthStoreBackend, McpAuthMode, Settings, YandexAuthMode, get_settings
+from .jobs.uploads import UploadJobStore
+from .models.errors import ConfigurationError
+from .policies.cursors import CursorCodec, CursorKeyRing
+from .security.audit import AuditContextMiddleware
+from .security.transport import RegistrationSourceMiddleware, TrustedProxyHeadersMiddleware
 from .services.disk import DiskService
 from .services.wiki import WikiService
 from .services.workspace import WorkspaceService
+from .tools import register_common_tools, register_disk_tools, register_wiki_tools
 
-# Initialize app state
-settings = get_settings()
-
-disk_client = YandexDiskClient(token=settings.yandex_oauth_token.get_secret_value()) if settings.yandex_disk_enabled and settings.yandex_oauth_token else None
-wiki_client = YandexWikiClient(
-    token=settings.yandex_oauth_token.get_secret_value(),
-    org_id=settings.yandex_wiki_org_id,
-    is_cloud_org=settings.yandex_wiki_is_cloud_org
-) if settings.yandex_wiki_enabled and settings.yandex_oauth_token else None
-
-disk_service = DiskService(
-    client=disk_client,
-    allowed_roots=settings.disk_allowed_roots,
-    can_read=settings.disk_read,
-    can_write=settings.disk_write,
-    can_delete=settings.disk_delete
-) if disk_client else None
-
-wiki_service = WikiService(
-    client=wiki_client,
-    allowed_roots=settings.wiki_allowed_roots,
-    can_read=settings.wiki_read,
-    can_write=settings.wiki_write,
-    can_delete=settings.wiki_delete
-) if wiki_client else None
-
-workspace_service = WorkspaceService(disk=disk_service, wiki=wiki_service)
 
 class StaticTokenVerifier(TokenVerifier):
-    def __init__(self, expected_token: str):
+    def __init__(self, expected_token: str, scopes: list[str] | None = None):
         self.expected_token = expected_token
+        self.scopes = scopes or []
 
     async def verify_token(self, token: str) -> AccessToken | None:
-        if token == self.expected_token:
-            return AccessToken(token=token, client_id="static-client", scopes=[])
+        if hmac.compare_digest(token, self.expected_token):
+            return AccessToken(token=token, client_id="static-client", scopes=self.scopes)
         return None
 
-token_verifier = StaticTokenVerifier(settings.mcp_auth_token) if settings.mcp_auth_token else None
 
-mcp_server = MCPServer(
-    name="yandex-workspace-mcp",
-    version="0.1.0",
-    token_verifier=token_verifier
-)
-
-# Standard Tools
-@mcp_server.tool(name="search", description="Search across Yandex Disk and Yandex Wiki", annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True))
-async def search(query: str, limit: int = 20) -> SearchResult:
-    return await workspace_service.search(query, limit)
-
-@mcp_server.tool(name="fetch", description="Fetch a canonical resource by ID from Yandex Workspace", annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True))
-async def fetch(resource_id: str) -> FetchResult:
-    return await workspace_service.fetch(resource_id)
-
-# Disk Tools
-if disk_service and disk_service.can_read:
-    @mcp_server.tool(name="disk_list", description="List contents of a folder on Yandex Disk", annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True))
-    async def disk_list(path: str, limit: int = 50, offset: int = 0) -> dict:
-        assert disk_service is not None
-        return await disk_service.list_folder(path, limit, offset)
-
-    @mcp_server.tool(name="disk_get_metadata", description="Get metadata for a file or folder on Yandex Disk", annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True))
-    async def disk_get_metadata(path: str) -> dict:
-        assert disk_service is not None
-        return await disk_service.get_metadata(path)
-
-    @mcp_server.tool(name="disk_read", description="Read text content of a file on Yandex Disk", annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True))
-    async def disk_read(path: str) -> str:
-        assert disk_service is not None
-        return await disk_service.read_file(path)
-
-if disk_service and disk_service.can_write:
-    @mcp_server.tool(name="disk_upload", description="Upload text content to a file on Yandex Disk", annotations=ToolAnnotations(idempotent_hint=True))
-    async def disk_upload(path: str, content: str) -> dict:
-        assert disk_service is not None
-        return await disk_service.upload(path, content)
-
-    @mcp_server.tool(name="disk_create_folder", description="Create a new folder on Yandex Disk", annotations=ToolAnnotations(idempotent_hint=True))
-    async def disk_create_folder(path: str) -> dict:
-        assert disk_service is not None
-        return await disk_service.create_folder(path)
-
-    @mcp_server.tool(name="disk_copy", description="Copy a file or folder on Yandex Disk", annotations=ToolAnnotations(idempotent_hint=True))
-    async def disk_copy(from_path: str, to_path: str) -> dict:
-        assert disk_service is not None
-        return await disk_service.copy(from_path, to_path)
-
-    @mcp_server.tool(name="disk_move", description="Move a file or folder on Yandex Disk", annotations=ToolAnnotations(idempotent_hint=True))
-    async def disk_move(from_path: str, to_path: str) -> dict:
-        assert disk_service is not None
-        return await disk_service.move(from_path, to_path)
-
-if disk_service and disk_service.can_delete:
-    @mcp_server.tool(name="disk_delete", description="Delete a file or folder on Yandex Disk", annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True))
-    async def disk_delete(path: str, permanently: bool = False) -> dict:
-        assert disk_service is not None
-        return await disk_service.delete(path, permanently=permanently)
-
-# Wiki Tools
-if wiki_service and wiki_service.can_read:
-    @mcp_server.tool(name="wiki_search", description="Search Yandex Wiki pages", annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True))
-    async def wiki_search(query: str, limit: int = 50, page: int = 1) -> dict:
-        assert wiki_service is not None
-        return await wiki_service.search(query, limit, page)
-
-    @mcp_server.tool(name="wiki_get_page", description="Get a Yandex Wiki page by slug", annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True))
-    async def wiki_get_page(slug: str) -> dict:
-        assert wiki_service is not None
-        return await wiki_service.get_page(slug)
-
-    @mcp_server.tool(name="wiki_get_tree", description="Get the tree of pages under a Wiki slug", annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True))
-    async def wiki_get_tree(slug: str) -> dict:
-        assert wiki_service is not None
-        return await wiki_service.get_tree(slug)
-
-if wiki_service and wiki_service.can_write:
-    @mcp_server.tool(name="wiki_create_page", description="Create a new Yandex Wiki page")
-    async def wiki_create_page(slug: str, title: str, body: str) -> dict:
-        assert wiki_service is not None
-        return await wiki_service.create_page(slug, title, body)
-
-    @mcp_server.tool(name="wiki_update_page", description="Updates an existing Yandex Wiki page.", annotations=ToolAnnotations(idempotent_hint=True))
-    async def wiki_update_page(slug: str, body: str, title: str | None = None) -> dict:
-        assert wiki_service is not None
-        return await wiki_service.update_page(slug, body, title=title)
+ClientFactory = Callable[[], Any]
+ServiceFactory = Callable[..., tuple[Any, Any, Any]]
 
 
+@dataclass(frozen=True, slots=True)
+class ApplicationDependencies:
+    disk_client_factory: ClientFactory | None = None
+    wiki_client_factory: ClientFactory | None = None
+    cursor_keys: tuple[bytes, ...] | None = None
+    recovery_keys: tuple[bytes, ...] | None = None
+    signed_client_factory: ClientFactory | None = None
+    service_factory: ServiceFactory | None = None
+    auth_store_factory: ClientFactory | None = None
+    oauth_http_client_factory: ClientFactory | None = None
+
+
+@dataclass(slots=True)
+class ApplicationState:
+    disk_client: Any | None
+    wiki_client: Any | None
+    disk_service: Any | None
+    wiki_service: Any | None
+    workspace_service: Any
+    cursor_codec: CursorCodec
+    recovery_store: RecoveryTokenStore | None
+    signed_client: Any | None
+    upload_job_store: UploadJobStore | None
+    auth_store: Any | None
+    oauth_provider: YandexMcpOAuthProvider | None
+    oauth_callback: YandexOAuthCallback | None
+
+
+class Application:
+    def __init__(
+        self,
+        settings: Settings,
+        dependencies: ApplicationDependencies,
+        mcp_server: MCPServer,
+        auth_store: Any | None = None,
+        oauth_provider: YandexMcpOAuthProvider | None = None,
+    ) -> None:
+        self.settings = settings
+        self._settings_snapshot = settings.model_copy(deep=True)
+        self.dependencies = dependencies
+        self.mcp_server = mcp_server
+        self.auth_store = auth_store
+        self.oauth_provider = oauth_provider
+        self.oauth_callback: YandexOAuthCallback | None = None
+        self._credential_provider: Any | None = None
+        self.state: ApplicationState | None = None
+        self._opened_resources: list[Any] = []
+        self._closed = False
+        self._local_principal = WorkspacePrincipal(
+            principal_id="trusted-local",
+            scopes=scopes_for_permissions(
+                can_read=settings.disk_read or settings.wiki_read,
+                can_write=settings.disk_write or settings.wiki_write,
+                can_delete=settings.disk_delete or settings.wiki_delete,
+            ),
+        )
+
+    @property
+    def principal(self) -> WorkspacePrincipal:
+        return current_principal(
+            self._local_principal,
+            require_authenticated=(
+                self.settings.mcp_transport == "streamable-http"
+                and self.settings.mcp_auth_mode is not McpAuthMode.LOCAL
+            ),
+        )
+
+    @contextlib.asynccontextmanager
+    async def lifespan(self) -> AsyncIterator[ApplicationState]:
+        state = await self.open()
+        try:
+            yield state
+        finally:
+            await self.close()
+
+    async def open(self) -> ApplicationState:
+        if self.state is not None:
+            return self.state
+        if self._closed:
+            raise ConfigurationError("Application cannot reopen after shutdown.")
+        token = (
+            self.settings.yandex_oauth_token.get_secret_value()
+            if self.settings.yandex_oauth_token
+            else None
+        )
+        static_credential_present = token or self.settings.yandex_iam_token is not None
+        if (
+            (self.settings.yandex_disk_enabled or self.settings.yandex_wiki_enabled)
+            and self.settings.yandex_auth_mode is not YandexAuthMode.MULTI_USER
+            and not static_credential_present
+        ):
+            raise ConfigurationError("A Yandex credential is required.")
+        try:
+            if self.auth_store is not None:
+                if self.oauth_provider is None:
+                    raise ConfigurationError("OAuth provider is not configured.")
+                open_store = getattr(self.auth_store, "open", None)
+                if open_store is not None:
+                    await open_store()
+                self._opened_resources.append(self.auth_store)
+                callback_client = (
+                    self.dependencies.oauth_http_client_factory()
+                    if self.dependencies.oauth_http_client_factory
+                    else None
+                )
+                self.oauth_callback = YandexOAuthCallback(
+                    provider=self.oauth_provider,
+                    store=self.auth_store,
+                    yandex_client_id=self.settings.yandex_oauth_client_id or "",
+                    yandex_client_secret=(
+                        self.settings.yandex_oauth_client_secret.get_secret_value()
+                        if self.settings.yandex_oauth_client_secret
+                        else ""
+                    ),
+                    callback_url=self.settings.mcp_oauth_callback_url or "",
+                    organization_id=self.settings.yandex_wiki_org_id,
+                    cloud_organization=self.settings.yandex_wiki_is_cloud_org,
+                    client=callback_client,
+                )
+                self._opened_resources.append(self.oauth_callback)
+                self._credential_provider = StoredCredentialProvider(
+                    self.auth_store,
+                    yandex_client_id=self.settings.yandex_oauth_client_id or "",
+                    yandex_client_secret=(
+                        self.settings.yandex_oauth_client_secret.get_secret_value()
+                        if self.settings.yandex_oauth_client_secret
+                        else ""
+                    ),
+                    client=self.oauth_callback.client,
+                )
+            elif self.settings.yandex_auth_mode is YandexAuthMode.IAM:
+                iam_token = self.settings.yandex_iam_token
+                self._credential_provider = StaticCredentialProvider(
+                    YandexIAMCredential(
+                        iam_token.get_secret_value() if iam_token else "",
+                        organization_id=self.settings.yandex_iam_org_id or "",
+                    )
+                )
+            elif token:
+                self._credential_provider = StaticCredentialProvider(
+                    YandexOAuthCredential(
+                        token,
+                        organization_id=self.settings.yandex_wiki_org_id,
+                        cloud_organization=self.settings.yandex_wiki_is_cloud_org,
+                    )
+                )
+
+            disk_client = None
+            if self.settings.yandex_disk_enabled:
+                disk_factory = self.dependencies.disk_client_factory or (
+                    lambda: YandexDiskClient(
+                        credential_provider=lambda: self._request_credentials(
+                            include_organization=False
+                        )
+                    )
+                )
+                disk_client = disk_factory()
+                self._opened_resources.append(disk_client)
+            wiki_client = None
+            if self.settings.yandex_wiki_enabled:
+                wiki_factory = self.dependencies.wiki_client_factory or (
+                    lambda: YandexWikiClient(
+                        credential_provider=lambda: self._request_credentials(
+                            include_organization=True
+                        ),
+                    )
+                )
+                wiki_client = wiki_factory()
+                self._opened_resources.append(wiki_client)
+
+            cursor_codec = self._cursor_codec()
+            recovery_store = self._recovery_store()
+            if recovery_store is not None:
+                self._opened_resources.append(recovery_store)
+            signed_client = None
+            trusted_local_upload = self.settings.mcp_transport == "stdio" and (
+                (bool(self.settings.wiki_upload_allowed_dirs) and self.settings.wiki_write)
+                or (bool(self.settings.disk_upload_allowed_dirs) and self.settings.disk_write)
+            )
+            if trusted_local_upload or (
+                self.settings.yandex_disk_enabled and self.settings.disk_read
+            ):
+                signed_factory = self.dependencies.signed_client_factory or SignedTransferClient
+                signed_client = signed_factory()
+                self._opened_resources.append(signed_client)
+            upload_job_store = None
+            if (
+                self.settings.mcp_transport == "stdio"
+                and self.settings.disk_write
+                and self.settings.disk_upload_allowed_dirs
+            ):
+                upload_job_store = UploadJobStore(
+                    capacity=self.settings.disk_upload_job_capacity,
+                    ttl_seconds=self.settings.disk_upload_job_ttl_seconds,
+                    cursor_codec=cursor_codec,
+                )
+                self._opened_resources.append(upload_job_store)
+            if self.dependencies.service_factory:
+                disk_service, wiki_service, workspace_service = self.dependencies.service_factory(
+                    disk_client=disk_client,
+                    wiki_client=wiki_client,
+                    cursor_codec=cursor_codec,
+                    settings=self.settings,
+                )
+            else:
+                disk_service = (
+                    DiskService(
+                        disk_client,
+                        self.settings.disk_allowed_roots,
+                        self.settings.disk_read,
+                        self.settings.disk_write,
+                        self.settings.disk_delete,
+                        cursor_codec=cursor_codec,
+                        upload_allowed_dirs=self.settings.disk_upload_allowed_dirs,
+                        max_upload_bytes=self.settings.disk_max_upload_bytes,
+                        signed_client=signed_client,
+                        upload_url_allowed_hosts=self.settings.disk_upload_url_allowed_hosts,
+                        allowed_public_keys=self.settings.disk_allowed_public_keys,
+                        allow_global_destructive=self.settings.disk_allow_global_destructive,
+                        upload_job_store=upload_job_store,
+                        max_inline_text_bytes=self.settings.max_inline_text_size_kb * 1024,
+                    )
+                    if disk_client
+                    else None
+                )
+                wiki_service = (
+                    WikiService(
+                        wiki_client,
+                        self.settings.wiki_allowed_roots,
+                        self.settings.wiki_read,
+                        self.settings.wiki_write,
+                        self.settings.wiki_delete,
+                        recovery_store=recovery_store,
+                        upload_allowed_dirs=self.settings.wiki_upload_allowed_dirs,
+                        max_attachment_bytes=self.settings.wiki_max_attachment_bytes,
+                        signed_client=signed_client,
+                    )
+                    if wiki_client
+                    else None
+                )
+                workspace_service = WorkspaceService(
+                    disk_service,
+                    wiki_service,
+                    cursor_codec=cursor_codec,
+                )
+            self.state = ApplicationState(
+                disk_client=disk_client,
+                wiki_client=wiki_client,
+                disk_service=disk_service,
+                wiki_service=wiki_service,
+                workspace_service=workspace_service,
+                cursor_codec=cursor_codec,
+                recovery_store=recovery_store,
+                signed_client=signed_client,
+                upload_job_store=upload_job_store,
+                auth_store=self.auth_store,
+                oauth_provider=self.oauth_provider,
+                oauth_callback=self.oauth_callback,
+            )
+            return self.state
+        except BaseException:
+            await self._close_resources()
+            self._closed = True
+            raise
+
+    async def _request_credentials(self, *, include_organization: bool) -> RequestCredentials:
+        if self._credential_provider is None:
+            raise ConfigurationError("A Yandex credential provider is not active.")
+        credential = await self._credential_provider.resolve(self.principal)
+        selected = credential.request_credentials()
+        return RequestCredentials(
+            token=selected.token,
+            scheme=selected.scheme,
+            headers=selected.headers if include_organization else {},
+        )
+
+    def _cursor_codec(self) -> CursorCodec:
+        if self.dependencies.cursor_keys:
+            return CursorCodec(self.dependencies.cursor_keys)
+        configured = [value.get_secret_value() for value in self.settings.mcp_cursor_keys]
+        remote = (
+            self.settings.mcp_transport == "streamable-http"
+            and self.settings.mcp_host not in {"127.0.0.1", "::1", "localhost"}
+        )
+        return CursorCodec(CursorKeyRing.from_config(configured, remote=remote).keys)
+
+    def _recovery_store(self) -> RecoveryTokenStore | None:
+        if not self.settings.yandex_wiki_enabled or not self.settings.wiki_delete:
+            return None
+        if self.auth_store is not None:
+            return SharedRecoveryTokenStore(self.auth_store)
+        if self.dependencies.recovery_keys:
+            keys = self.dependencies.recovery_keys
+        else:
+            configured = [
+                value.get_secret_value() for value in self.settings.mcp_token_encryption_keys
+            ]
+            keys = tuple(
+                base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)) for value in configured
+            )
+            if not keys:
+                keys = (secrets.token_bytes(32),)
+        return InMemoryRecoveryTokenStore(keys)
+
+    async def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        await self._close_resources()
+        self.state = None
+
+    async def _close_resources(self) -> None:
+        while self._opened_resources:
+            resource = self._opened_resources.pop()
+            close = getattr(resource, "close", None)
+            if close:
+                await close()
+
+    def require_workspace_service(self) -> WorkspaceService:
+        if not self.state:
+            raise ConfigurationError("Application lifespan is not active.")
+        return self.state.workspace_service
+
+    def require_disk_service(self) -> DiskService:
+        if not self.state or not self.state.disk_service:
+            raise ConfigurationError("Disk service is not active.")
+        return self.state.disk_service
+
+    def require_wiki_service(self) -> WikiService:
+        if not self.state or not self.state.wiki_service:
+            raise ConfigurationError("Wiki service is not active.")
+        return self.state.wiki_service
+
+    def require_oauth_callback(self) -> YandexOAuthCallback:
+        if not self.oauth_callback:
+            raise ConfigurationError("OAuth callback is not active.")
+        return self.oauth_callback
+
+
+def create_application(
+    settings: Settings,
+    dependencies: ApplicationDependencies | None = None,
+) -> Application:
+    # Detach server construction from caller-owned mutable containers and revalidate once.
+    settings = Settings(**settings.model_dump())
+    dependencies = dependencies or ApplicationDependencies()
+    application: Application
+
+    auth_store = None
+    oauth_provider = None
+    if settings.mcp_auth_mode is McpAuthMode.MULTI_USER:
+        keys = _token_encryption_keys(settings)
+        if dependencies.auth_store_factory:
+            auth_store = dependencies.auth_store_factory()
+        elif settings.auth_store_backend is AuthStoreBackend.REDIS:
+            redis_url = settings.redis_url.get_secret_value() if settings.redis_url else None
+            auth_store = RedisTokenStore(
+                keys,
+                url=redis_url,
+                registration_cap=settings.mcp_client_registration_cap,
+            )
+        else:
+            auth_store = InMemoryTokenStore(
+                keys,
+                registration_cap=settings.mcp_client_registration_cap,
+            )
+        permission_scopes = scopes_for_permissions(
+            can_read=settings.disk_read or settings.wiki_read,
+            can_write=settings.disk_write or settings.wiki_write,
+            can_delete=settings.disk_delete or settings.wiki_delete,
+        )
+        oauth_provider = YandexMcpOAuthProvider(
+            store=auth_store,
+            issuer_url=settings.mcp_issuer_url,
+            resource_server_url=settings.mcp_resource_server_url,
+            yandex_client_id=settings.yandex_oauth_client_id or "",
+            yandex_callback_url=settings.mcp_oauth_callback_url or "",
+            valid_scopes=[scope.value for scope in permission_scopes],
+            client_secret_expiry_seconds=settings.mcp_client_secret_expiry_seconds,
+        )
+
+    @contextlib.asynccontextmanager
+    async def mcp_lifespan(_server: MCPServer) -> AsyncIterator[ApplicationState]:
+        async with application.lifespan() as state:
+            yield state
+
+    token_verifier = None
+    auth_settings = None
+    if settings.mcp_auth_mode is McpAuthMode.STATIC and settings.mcp_auth_token:
+        permission_ceiling = scopes_for_permissions(
+            can_read=settings.disk_read or settings.wiki_read,
+            can_write=settings.disk_write or settings.wiki_write,
+            can_delete=settings.disk_delete or settings.wiki_delete,
+        )
+        principal_scopes = effective_static_scopes(
+            settings.mcp_static_scopes,
+            permission_ceiling,
+        )
+        token_verifier = StaticTokenVerifier(
+            settings.mcp_auth_token.get_secret_value(),
+            scopes=[scope.value for scope in principal_scopes],
+        )
+        auth_settings = AuthSettings(
+            issuer_url=AnyHttpUrl(settings.mcp_issuer_url),
+            resource_server_url=AnyHttpUrl(settings.mcp_resource_server_url),
+            required_scopes=[],
+        )
+    elif settings.mcp_auth_mode is McpAuthMode.MULTI_USER:
+        auth_settings = AuthSettings(
+            issuer_url=AnyHttpUrl(settings.mcp_issuer_url),
+            resource_server_url=AnyHttpUrl(settings.mcp_resource_server_url),
+            required_scopes=[],
+            client_registration_options=ClientRegistrationOptions(
+                enabled=True,
+                valid_scopes=list(oauth_provider.valid_scopes) if oauth_provider else [],
+                default_scopes=list(oauth_provider.valid_scopes) if oauth_provider else [],
+                client_secret_expiry_seconds=settings.mcp_client_secret_expiry_seconds,
+            ),
+        )
+    mcp = MCPServer(
+        name="yandex-workspace-mcp",
+        version="0.1.0",
+        auth=auth_settings,
+        auth_server_provider=oauth_provider,
+        token_verifier=token_verifier,
+        lifespan=mcp_lifespan,
+    )
+    application = Application(
+        settings,
+        dependencies,
+        mcp,
+        auth_store=auth_store,
+        oauth_provider=oauth_provider,
+    )
+    mcp.middleware.append(AuditContextMiddleware(lambda: application.principal.principal_id))
+    if oauth_provider is not None:
+        callback_path = urlsplit(settings.mcp_oauth_callback_url or "").path
+
+        @mcp.custom_route(callback_path, methods=["GET"], include_in_schema=False)
+        async def yandex_oauth_callback(request: Request) -> Response:
+            return await application.require_oauth_callback().handle(request)
+
+    @mcp.custom_route("/healthz", methods=["GET"], include_in_schema=False)
+    async def healthz(_request: Request) -> Response:
+        return JSONResponse({"status": "ok"}, headers={"Cache-Control": "no-store"})
+
+    register_common_tools(mcp, application)
+    register_disk_tools(mcp, application, settings)
+    register_wiki_tools(mcp, application, settings)
+    return application
+
+
+def _token_encryption_keys(settings: Settings) -> tuple[bytes, ...]:
+    configured = [value.get_secret_value() for value in settings.mcp_token_encryption_keys]
+    if not configured:
+        return (secrets.token_bytes(32),)
+    return tuple(base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)) for value in configured)
+
+
+def transport_security_settings(settings: Settings) -> TransportSecuritySettings:
+    if settings.mcp_allowed_hosts:
+        allowed_hosts = list(settings.mcp_allowed_hosts)
+    else:
+        allowed_hosts = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+    if settings.mcp_allowed_origins:
+        allowed_origins = list(settings.mcp_allowed_origins)
+    else:
+        allowed_origins = [
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "http://[::1]:*",
+        ]
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
+    )
+
+
+def create_http_app(application: Application) -> ASGIApp:
+    settings = application.settings
+    if settings.model_dump() != application._settings_snapshot.model_dump():
+        raise ConfigurationError("Application settings changed after server construction.")
+    if settings.mcp_transport != "streamable-http":
+        raise ConfigurationError("HTTP application requires Streamable HTTP settings.")
+    try:
+        # Defend against callers mutating a Settings instance after initial validation.
+        Settings(**settings.model_dump())
+    except Exception as exc:
+        raise ConfigurationError("HTTP application settings failed validation.") from exc
+    app: ASGIApp = application.mcp_server.streamable_http_app(
+        streamable_http_path="/mcp",
+        json_response=True,
+        stateless_http=True,
+        max_request_body_size=settings.mcp_max_request_body_bytes,
+        transport_security=transport_security_settings(settings),
+        host=settings.mcp_host,
+    )
+    app = RegistrationSourceMiddleware(app)
+    if settings.mcp_trusted_proxy_cidrs:
+        app = TrustedProxyHeadersMiddleware(app, settings.mcp_trusted_proxy_cidrs)
+    return app
+
+
+application = create_application(get_settings())
+mcp_server = application.mcp_server

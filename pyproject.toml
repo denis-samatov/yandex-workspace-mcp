@@ -3,15 +3,19 @@ name = "yandex-workspace-mcp"
 version = "0.1.0"
 description = "Production-grade MCP server for Yandex Disk and Yandex Wiki"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
-    "mcp[cli]>=2.0.0",
+    "mcp[cli]>=2.0.0,<3.0.0",
     "httpx>=0.27.0",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.5.0",
     "structlog>=24.4.0",
     "anyio>=4.4.0",
+    "cryptography>=44",
 ]
+
+[project.optional-dependencies]
+multi-user = ["redis>=5"]
 
 [project.scripts]
 yandex-workspace-mcp = "yandex_workspace_mcp.main:main"
@@ -23,6 +27,7 @@ dev = [
     "respx>=0.21.0",
     "ruff>=0.6.0",
     "mypy>=1.11.0",
+    "build>=1.2",
 ]
 
 [build-system]
@@ -35,7 +40,6 @@ target-version = "py312"
 
 [tool.mypy]
 python_version = "3.12"
-ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

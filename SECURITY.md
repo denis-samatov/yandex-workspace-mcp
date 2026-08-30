@@ -33,7 +33,8 @@ and audit logging. Those properties are covered by tests in
 
 ## Known limitations
 
-- `wiki_update_page` does not implement optimistic locking (see the
-  Limitations section of [`README.md`](README.md)); concurrent writers to
-  the same page can overwrite each other's changes. This is a data-integrity
-  risk, not a vulnerability that exposes data to unauthorized parties.
+- `wiki_update_page` forwards Yandex Wiki's `allow_merge` control but does not
+  expose a page revision precondition. Concurrent writers to the same page can
+  therefore overwrite each other's changes when merging is disabled. This is
+  a data-integrity risk, not a vulnerability that exposes data to unauthorized
+  parties.

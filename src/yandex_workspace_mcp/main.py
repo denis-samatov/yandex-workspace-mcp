@@ -1,19 +1,21 @@
 import argparse
-import logging
 import sys
 
 
 def main():
-    # Setup stderr logging early to avoid corrupting stdio MCP communication stream
-    logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-    
+    # Configure redacting stderr logging before any HTTP clients can emit request logs.
+    from .logging import setup_logging
+
+    setup_logging()
+
     parser = argparse.ArgumentParser(description="Yandex Workspace MCP Server")
     parser.add_argument("command", choices=["serve", "doctor", "tools"], nargs="?", default="serve")
-    parser.add_argument("--transport", choices=["stdio", "streamable-http"], default="stdio")
+    parser.add_argument("--transport", choices=["stdio", "streamable-http"], default=None)
     args = parser.parse_args()
 
-    from .config import get_settings
-    settings = get_settings()
+    from .config import Settings, get_settings
+
+    settings = Settings(mcp_transport=args.transport) if args.transport else get_settings()
 
     if args.command == "doctor":
         print("MCP specification ......... 2026-07-28")
@@ -23,29 +25,33 @@ def main():
         print(f"Disk read ................. {'ENABLED' if settings.disk_read else 'DISABLED'}")
         print(f"Wiki read ................. {'ENABLED' if settings.wiki_read else 'DISABLED'}")
         sys.exit(0)
-    
+
     if args.command == "tools":
-        from .server import mcp_server
+        from .server import create_application
+
+        create_application(settings)
         print("Tools registered on the server.")
         sys.exit(0)
 
-    from .server import mcp_server
+    from .server import create_application
 
-    if args.transport == "stdio":
-        mcp_server.run(transport="stdio")
-    elif args.transport == "streamable-http":
-        from mcp.server.transport_security import TransportSecuritySettings
-        mcp_server.run(
-            transport="streamable-http",
+    application = create_application(settings)
+
+    transport = settings.mcp_transport
+    if transport == "stdio":
+        application.mcp_server.run(transport="stdio")
+    elif transport == "streamable-http":
+        import uvicorn
+
+        from .server import create_http_app
+
+        uvicorn.run(
+            create_http_app(application),
             host=settings.mcp_host,
             port=settings.mcp_port,
-            stateless_http=True,
-            json_response=True,
-            transport_security=TransportSecuritySettings(
-                enable_dns_rebinding_protection=True,
-                allowed_hosts=["*"] # Can be restricted further in production
-            )
+            log_level="info",
         )
+
 
 if __name__ == "__main__":
     main()

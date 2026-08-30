@@ -1,9 +1,4 @@
-"""Service-layer permission-gating tests.
-
-policies/paths.py has its own tests for path validation, but nothing
-previously exercised the read_only / can_write / can_delete gates that the
-services actually enforce before a write or delete reaches the client.
-"""
+"""Regression tests for service-layer permission gates and path authorization."""
 
 from unittest.mock import AsyncMock
 
@@ -39,7 +34,7 @@ async def test_disk_upload_rejected_in_read_only_mode():
     svc = make_disk_service(can_write=False)
     with pytest.raises(PermissionDenied):
         await svc.upload("/Work/note.txt", "content")
-    svc.client.upload_file_text.assert_not_awaited()
+    svc.client.upload_inline_text.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -55,7 +50,7 @@ async def test_disk_delete_rejected_without_delete_permission():
     svc = make_disk_service(can_write=True, can_delete=False)
     with pytest.raises(PermissionDenied):
         await svc.delete("/Work/note.txt")
-    svc.client.delete.assert_not_awaited()
+    svc.client.delete_resource.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -71,7 +66,7 @@ async def test_disk_write_rejected_for_out_of_tree_path():
     svc = make_disk_service(can_write=True, allowed_roots=["/Work"])
     with pytest.raises(InvalidPath):
         await svc.upload("/Personal/secret.txt", "content")
-    svc.client.upload_file_text.assert_not_awaited()
+    svc.client.upload_inline_text.assert_not_awaited()
 
 
 @pytest.mark.asyncio

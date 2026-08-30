@@ -1,58 +1,87 @@
 import posixpath
+import re
 import unicodedata
 import urllib.parse
 
 from ..models.errors import InvalidPath
 
+_PERCENT_ESCAPE = re.compile(r"%[0-9A-Fa-f]{2}")
+
+
+def _reject_ambiguous_input(path: str) -> str:
+    if not isinstance(path, str) or not path:
+        raise InvalidPath()
+    if any(ord(character) < 32 or ord(character) == 127 for character in path):
+        raise InvalidPath()
+    if "\\" in path:
+        raise InvalidPath()
+
+    percent_count = path.count("%")
+    if percent_count != len(_PERCENT_ESCAPE.findall(path)):
+        raise InvalidPath()
+
+    decoded = path
+    try:
+        for _ in range(2):
+            next_value = urllib.parse.unquote(decoded, errors="strict")
+            if next_value == decoded:
+                break
+            decoded = next_value
+        if urllib.parse.unquote(decoded, errors="strict") != decoded:
+            raise InvalidPath()
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise InvalidPath() from exc
+
+    if unicodedata.normalize("NFKC", decoded) != decoded:
+        raise InvalidPath()
+    return decoded
+
 
 def normalize_path(path: str) -> str:
-    """
-    Normalizes a path to prevent traversal attacks, double encoding, etc.
-    """
-    # 1. Unquote percent encoding. Do it twice to prevent double-encoding attacks.
-    unquoted = urllib.parse.unquote(path)
-    unquoted = urllib.parse.unquote(unquoted)
-    
-    # 2. Normalize unicode to catch visual spoofing or alternate representations of slashes/dots
-    normalized_unicode = unicodedata.normalize('NFKC', unquoted)
-    
-    # 3. Replace backslashes with forward slashes (mixed separators)
-    normalized_slashes = normalized_unicode.replace("\\", "/")
-    
-    # 4. Use posixpath.normpath to resolve '.' and '..' and collapse multiple slashes
-    clean_path = posixpath.normpath(normalized_slashes)
-    
-    # 5. Ensure absolute-like representation for roots
+    """Return one canonical POSIX path or fail on ambiguous input."""
+
+    decoded = _reject_ambiguous_input(path)
+    if decoded.startswith("disk:"):
+        decoded = decoded.removeprefix("disk:")
+    clean_path = posixpath.normpath(decoded)
     if not clean_path.startswith("/"):
         clean_path = "/" + clean_path
-        
     return clean_path
 
-def is_path_allowed(path: str, allowed_roots: list[str]) -> bool:
-    """
-    Checks if a normalized path is contained within any of the allowed roots.
-    """
-    norm_path = normalize_path(path)
-    path_parts = norm_path.strip("/").split("/") if norm_path != "/" else []
-    
+
+def _normalized_roots(allowed_roots: list[str]) -> tuple[str, ...]:
+    roots: list[str] = []
     for root in allowed_roots:
-        norm_root = normalize_path(root)
+        roots.append(normalize_path(root))
+    return tuple(dict.fromkeys(roots))
+
+
+def is_path_allowed(path: str, allowed_roots: list[str]) -> bool:
+    norm_path = normalize_path(path)
+    for norm_root in _normalized_roots(allowed_roots):
         if norm_root == "/":
-            return True # Everything is allowed
-            
-        root_parts = norm_root.strip("/").split("/")
-        
-        # Check if root_parts is a prefix of path_parts
-        if len(path_parts) >= len(root_parts) and path_parts[:len(root_parts)] == root_parts:
             return True
-                
+        if norm_path == norm_root or norm_path.startswith(f"{norm_root}/"):
+            return True
     return False
 
+
 def validate_path(path: str, allowed_roots: list[str]) -> str:
-    """
-    Validates a path and returns the normalized path. Raises InvalidPath if not allowed.
-    """
-    norm_path = normalize_path(path)
-    if not is_path_allowed(norm_path, allowed_roots):
-        raise InvalidPath(f"Path '{path}' is not within allowed roots.")
+    try:
+        norm_path = normalize_path(path)
+        allowed = is_path_allowed(norm_path, allowed_roots)
+    except InvalidPath:
+        raise
+    except Exception as exc:
+        raise InvalidPath() from exc
+    if not allowed:
+        raise InvalidPath()
     return norm_path
+
+
+def validate_wiki_slug(slug: str, allowed_roots: list[str]) -> str:
+    normalized = validate_path(
+        "/" + slug.removeprefix("/") if not slug.startswith("/") else slug,
+        allowed_roots,
+    )
+    return normalized.removeprefix("/")
