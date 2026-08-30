@@ -95,8 +95,7 @@ class DiskService:
         valid_path = validate_path(path, self.allowed_roots)
         logger.info("disk.create_folder", path=valid_path)
         audit_logger.log("disk.create_folder", path=valid_path)
-        resp = await self.client._request("PUT", "/resources", params={"path": valid_path})
-        resp.raise_for_status()
+        await self.client.create_folder(valid_path)
         return {"status": "created", "path": valid_path}
 
     async def copy(self, from_path: str, to_path: str) -> dict[str, Any]:
@@ -106,8 +105,7 @@ class DiskService:
         valid_to = validate_path(to_path, self.allowed_roots)
         logger.info("disk.copy", from_path=valid_from, to_path=valid_to)
         audit_logger.log("disk.copy", from_path=valid_from, to_path=valid_to)
-        resp = await self.client._request("POST", "/resources/copy", params={"from": valid_from, "path": valid_to})
-        resp.raise_for_status()
+        await self.client.copy(valid_from, valid_to)
         return {"status": "copied", "from": valid_from, "to": valid_to}
 
     async def move(self, from_path: str, to_path: str) -> dict[str, Any]:
@@ -117,8 +115,7 @@ class DiskService:
         valid_to = validate_path(to_path, self.allowed_roots)
         logger.info("disk.move", from_path=valid_from, to_path=valid_to)
         audit_logger.log("disk.move", from_path=valid_from, to_path=valid_to)
-        resp = await self.client._request("POST", "/resources/move", params={"from": valid_from, "path": valid_to})
-        resp.raise_for_status()
+        await self.client.move(valid_from, valid_to)
         return {"status": "moved", "from": valid_from, "to": valid_to}
 
     async def delete(self, path: str, permanently: bool = False) -> dict[str, Any]:
@@ -127,8 +124,7 @@ class DiskService:
         valid_path = validate_path(path, self.allowed_roots)
         logger.info("disk.delete", path=valid_path, permanently=permanently)
         audit_logger.log("disk.delete", path=valid_path, permanently=permanently)
-        resp = await self.client._request("DELETE", "/resources", params={"path": valid_path, "permanently": str(permanently).lower()})
-        resp.raise_for_status()
+        await self.client.delete(valid_path, permanently=permanently)
         return {"status": "deleted", "path": valid_path}
 
     async def upload(self, path: str, content: str) -> dict[str, Any]:

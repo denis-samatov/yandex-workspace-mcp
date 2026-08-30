@@ -60,9 +60,7 @@ class WikiService:
             "title": title,
             "content": body
         }
-        resp = await self.client._request("POST", "/pages", json=payload)
-        resp.raise_for_status()
-        return resp.json()
+        return await self.client.create_page(payload)
 
     async def update_page(self, slug: str, body: str, title: str | None = None) -> dict[str, Any]:
         if not self.can_write:
@@ -85,6 +83,4 @@ class WikiService:
             
         # Yandex Wiki uses POST /pages/{page_id} to update, not PUT.
         # By default allow_merge is false.
-        resp = await self.client._request("POST", f"/pages/{page_id}", json=payload)
-        resp.raise_for_status()
-        return resp.json()
+        return await self.client.update_page(page_id, payload)

@@ -133,3 +133,29 @@ class YandexDiskClient(BaseYandexClient):
             raise APIError(f"Disk API error {resp.status_code}: {resp.text}")
         return resp.json()
 
+    async def create_folder(self, path: str) -> httpx.Response:
+        """Create a folder on Yandex Disk."""
+        resp = await self._request("PUT", "/resources", params={"path": path})
+        resp.raise_for_status()
+        return resp
+
+    async def copy(self, from_path: str, to_path: str) -> httpx.Response:
+        """Copy a file or folder on Yandex Disk."""
+        resp = await self._request("POST", "/resources/copy", params={"from": from_path, "path": to_path})
+        resp.raise_for_status()
+        return resp
+
+    async def move(self, from_path: str, to_path: str) -> httpx.Response:
+        """Move a file or folder on Yandex Disk."""
+        resp = await self._request("POST", "/resources/move", params={"from": from_path, "path": to_path})
+        resp.raise_for_status()
+        return resp
+
+    async def delete(self, path: str, permanently: bool = False) -> httpx.Response:
+        """Delete a file or folder on Yandex Disk."""
+        resp = await self._request(
+            "DELETE", "/resources", params={"path": path, "permanently": str(permanently).lower()}
+        )
+        resp.raise_for_status()
+        return resp
+

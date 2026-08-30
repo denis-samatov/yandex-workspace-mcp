@@ -43,3 +43,15 @@ class YandexWikiClient(BaseYandexClient):
         if resp.status_code != 200:
             raise APIError(f"Wiki API error {resp.status_code}: {resp.text}")
         return resp.json()
+
+    async def create_page(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Create a new Yandex Wiki page."""
+        resp = await self._request("POST", "/pages", json=payload)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def update_page(self, page_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+        """Update an existing Yandex Wiki page by its integer ID."""
+        resp = await self._request("POST", f"/pages/{page_id}", json=payload)
+        resp.raise_for_status()
+        return resp.json()
