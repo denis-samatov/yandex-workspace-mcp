@@ -1,0 +1,1699 @@
+{
+  "DiskCopyInput": {
+    "additionalProperties": false,
+    "properties": {
+      "destination_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Destination Path",
+        "type": "string"
+      },
+      "overwrite": {
+        "default": false,
+        "title": "Overwrite",
+        "type": "boolean"
+      },
+      "source_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Source Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "source_path",
+      "destination_path"
+    ],
+    "title": "DiskCopyInput",
+    "type": "object"
+  },
+  "DiskDeleteInput": {
+    "additionalProperties": false,
+    "properties": {
+      "path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Path",
+        "type": "string"
+      },
+      "permanently": {
+        "default": false,
+        "title": "Permanently",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "path"
+    ],
+    "title": "DiskDeleteInput",
+    "type": "object"
+  },
+  "DiskInfo": {
+    "additionalProperties": false,
+    "properties": {
+      "max_file_size": {
+        "minimum": 0,
+        "title": "Max File Size",
+        "type": "integer"
+      },
+      "paid_max_file_size": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Paid Max File Size"
+      },
+      "system_folders": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "title": "System Folders",
+        "type": "object"
+      },
+      "total_space": {
+        "minimum": 0,
+        "title": "Total Space",
+        "type": "integer"
+      },
+      "trash_size": {
+        "minimum": 0,
+        "title": "Trash Size",
+        "type": "integer"
+      },
+      "used_space": {
+        "minimum": 0,
+        "title": "Used Space",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "total_space",
+      "used_space",
+      "trash_size",
+      "max_file_size"
+    ],
+    "title": "DiskInfo",
+    "type": "object"
+  },
+  "DiskLinkResponse": {
+    "additionalProperties": false,
+    "properties": {
+      "download_url": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Download Url",
+        "type": "string"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      }
+    },
+    "required": [
+      "download_url"
+    ],
+    "title": "DiskLinkResponse",
+    "type": "object"
+  },
+  "DiskListInput": {
+    "additionalProperties": false,
+    "properties": {
+      "limit": {
+        "default": 100,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "maximum": 10000,
+        "minimum": 0,
+        "title": "Offset",
+        "type": "integer"
+      },
+      "path": {
+        "default": "/",
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Path",
+        "type": "string"
+      },
+      "sort": {
+        "default": "name",
+        "enum": [
+          "name",
+          "-name",
+          "created",
+          "-created",
+          "modified",
+          "-modified"
+        ],
+        "title": "Sort",
+        "type": "string"
+      }
+    },
+    "title": "DiskListInput",
+    "type": "object"
+  },
+  "DiskLocalUploadInput": {
+    "additionalProperties": false,
+    "properties": {
+      "destination_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Destination Path",
+        "type": "string"
+      },
+      "file_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "File Path",
+        "type": "string"
+      },
+      "overwrite": {
+        "default": false,
+        "title": "Overwrite",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "file_path",
+      "destination_path"
+    ],
+    "title": "DiskLocalUploadInput",
+    "type": "object"
+  },
+  "DiskMoveInput": {
+    "additionalProperties": false,
+    "properties": {
+      "destination_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Destination Path",
+        "type": "string"
+      },
+      "overwrite": {
+        "default": false,
+        "title": "Overwrite",
+        "type": "boolean"
+      },
+      "source_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Source Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "source_path",
+      "destination_path"
+    ],
+    "title": "DiskMoveInput",
+    "type": "object"
+  },
+  "DiskOperationResponse": {
+    "additionalProperties": false,
+    "properties": {
+      "operation_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Operation Id"
+      },
+      "path": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Path"
+      },
+      "status": {
+        "enum": [
+          "completed",
+          "pending"
+        ],
+        "title": "Status",
+        "type": "string"
+      }
+    },
+    "required": [
+      "status"
+    ],
+    "title": "DiskOperationResponse",
+    "type": "object"
+  },
+  "DiskPathInput": {
+    "additionalProperties": false,
+    "properties": {
+      "path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "path"
+    ],
+    "title": "DiskPathInput",
+    "type": "object"
+  },
+  "DiskPublicResource": {
+    "$defs": {
+      "DiskResource": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created At"
+          },
+          "embedded": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DiskResourcePage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "md5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Md5"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime Type"
+          },
+          "modified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modified At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Path"
+          },
+          "public_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Public Url"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "type": {
+            "enum": [
+              "file",
+              "dir"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "DiskResource",
+        "type": "object"
+      },
+      "DiskResourcePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/DiskResource"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "default": 100,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total"
+          }
+        },
+        "title": "DiskResourcePage",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "created_at": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Created At"
+      },
+      "embedded": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/DiskResourcePage"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "md5": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Md5"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "modified_at": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Modified At"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "path": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Path"
+      },
+      "public_url": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Public Url"
+      },
+      "size": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Size"
+      },
+      "type": {
+        "enum": [
+          "file",
+          "dir"
+        ],
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "type"
+    ],
+    "title": "DiskPublicResource",
+    "type": "object"
+  },
+  "DiskPublicResourceInput": {
+    "additionalProperties": false,
+    "properties": {
+      "limit": {
+        "default": 100,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "maximum": 10000,
+        "minimum": 0,
+        "title": "Offset",
+        "type": "integer"
+      },
+      "path": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Path"
+      },
+      "public_key": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Public Key"
+      },
+      "public_url": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Public Url"
+      }
+    },
+    "title": "DiskPublicResourceInput",
+    "type": "object"
+  },
+  "DiskRecentInput": {
+    "additionalProperties": false,
+    "properties": {
+      "limit": {
+        "default": 100,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      },
+      "media_type": {
+        "anyOf": [
+          {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Media Type"
+      }
+    },
+    "title": "DiskRecentInput",
+    "type": "object"
+  },
+  "DiskRenameInput": {
+    "additionalProperties": false,
+    "properties": {
+      "new_name": {
+        "maxLength": 255,
+        "minLength": 1,
+        "title": "New Name",
+        "type": "string"
+      },
+      "path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "path",
+      "new_name"
+    ],
+    "title": "DiskRenameInput",
+    "type": "object"
+  },
+  "DiskResource": {
+    "$defs": {
+      "DiskResource": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created At"
+          },
+          "embedded": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DiskResourcePage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "md5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Md5"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime Type"
+          },
+          "modified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modified At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Path"
+          },
+          "public_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Public Url"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "type": {
+            "enum": [
+              "file",
+              "dir"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "DiskResource",
+        "type": "object"
+      },
+      "DiskResourcePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/DiskResource"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "default": 100,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total"
+          }
+        },
+        "title": "DiskResourcePage",
+        "type": "object"
+      }
+    },
+    "$ref": "#/$defs/DiskResource"
+  },
+  "DiskResourcePage": {
+    "$defs": {
+      "DiskResource": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created At"
+          },
+          "embedded": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DiskResourcePage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "md5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Md5"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime Type"
+          },
+          "modified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modified At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Path"
+          },
+          "public_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Public Url"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "type": {
+            "enum": [
+              "file",
+              "dir"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "DiskResource",
+        "type": "object"
+      },
+      "DiskResourcePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/DiskResource"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "default": 100,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total"
+          }
+        },
+        "title": "DiskResourcePage",
+        "type": "object"
+      }
+    },
+    "$ref": "#/$defs/DiskResourcePage"
+  },
+  "DiskSearchInput": {
+    "additionalProperties": false,
+    "properties": {
+      "cursor": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Cursor"
+      },
+      "limit": {
+        "default": 50,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      },
+      "media_type": {
+        "anyOf": [
+          {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Media Type"
+      },
+      "query": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Query",
+        "type": "string"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "title": "DiskSearchInput",
+    "type": "object"
+  },
+  "DiskSearchResponse": {
+    "$defs": {
+      "DiskResource": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created At"
+          },
+          "embedded": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DiskResourcePage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "md5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Md5"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime Type"
+          },
+          "modified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modified At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Path"
+          },
+          "public_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Public Url"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "type": {
+            "enum": [
+              "file",
+              "dir"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "DiskResource",
+        "type": "object"
+      },
+      "DiskResourcePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/DiskResource"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "default": 100,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 10000,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total"
+          }
+        },
+        "title": "DiskResourcePage",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/$defs/DiskResource"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "next_cursor": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Next Cursor"
+      },
+      "query": {
+        "title": "Query",
+        "type": "string"
+      },
+      "truncated_by_upstream": {
+        "default": false,
+        "title": "Truncated By Upstream",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "title": "DiskSearchResponse",
+    "type": "object"
+  },
+  "DiskTrashEmptyInput": {
+    "additionalProperties": false,
+    "properties": {
+      "confirm": {
+        "const": true,
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "confirm"
+    ],
+    "title": "DiskTrashEmptyInput",
+    "type": "object"
+  },
+  "DiskTrashListInput": {
+    "additionalProperties": false,
+    "properties": {
+      "limit": {
+        "default": 100,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "maximum": 10000,
+        "minimum": 0,
+        "title": "Offset",
+        "type": "integer"
+      },
+      "sort": {
+        "default": "name",
+        "enum": [
+          "name",
+          "-name",
+          "deleted",
+          "-deleted"
+        ],
+        "title": "Sort",
+        "type": "string"
+      }
+    },
+    "title": "DiskTrashListInput",
+    "type": "object"
+  },
+  "DiskTrashRestoreInput": {
+    "additionalProperties": false,
+    "properties": {
+      "destination_path": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Destination Path"
+      },
+      "overwrite": {
+        "default": false,
+        "title": "Overwrite",
+        "type": "boolean"
+      },
+      "trash_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Trash Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "trash_path"
+    ],
+    "title": "DiskTrashRestoreInput",
+    "type": "object"
+  },
+  "DiskURLUploadInput": {
+    "additionalProperties": false,
+    "properties": {
+      "destination_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Destination Path",
+        "type": "string"
+      },
+      "overwrite": {
+        "default": false,
+        "title": "Overwrite",
+        "type": "boolean"
+      },
+      "url": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Url",
+        "type": "string"
+      }
+    },
+    "required": [
+      "url",
+      "destination_path"
+    ],
+    "title": "DiskURLUploadInput",
+    "type": "object"
+  },
+  "UploadJobIDInput": {
+    "additionalProperties": false,
+    "properties": {
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id"
+    ],
+    "title": "UploadJobIDInput",
+    "type": "object"
+  },
+  "UploadJobListInput": {
+    "additionalProperties": false,
+    "properties": {
+      "cursor": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Cursor"
+      },
+      "limit": {
+        "default": 50,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      },
+      "status": {
+        "anyOf": [
+          {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Status"
+      }
+    },
+    "title": "UploadJobListInput",
+    "type": "object"
+  },
+  "UploadJobListResponse": {
+    "$defs": {
+      "UploadJobResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes_sent": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Bytes Sent",
+            "type": "integer"
+          },
+          "bytes_total": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Bytes Total"
+          },
+          "created_at": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Created At",
+            "type": "string"
+          },
+          "destination_path": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Destination Path",
+            "type": "string"
+          },
+          "error_category": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Category"
+          },
+          "expires_at": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Expires At",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "created_at",
+          "updated_at",
+          "expires_at",
+          "destination_path"
+        ],
+        "title": "UploadJobResponse",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "jobs": {
+        "items": {
+          "$ref": "#/$defs/UploadJobResponse"
+        },
+        "title": "Jobs",
+        "type": "array"
+      },
+      "next_cursor": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Next Cursor"
+      }
+    },
+    "title": "UploadJobListResponse",
+    "type": "object"
+  },
+  "UploadJobResponse": {
+    "additionalProperties": false,
+    "properties": {
+      "bytes_sent": {
+        "default": 0,
+        "minimum": 0,
+        "title": "Bytes Sent",
+        "type": "integer"
+      },
+      "bytes_total": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Bytes Total"
+      },
+      "created_at": {
+        "maxLength": 128,
+        "minLength": 1,
+        "title": "Created At",
+        "type": "string"
+      },
+      "destination_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Destination Path",
+        "type": "string"
+      },
+      "error_category": {
+        "anyOf": [
+          {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Error Category"
+      },
+      "expires_at": {
+        "maxLength": 128,
+        "minLength": 1,
+        "title": "Expires At",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "maxLength": 128,
+        "minLength": 1,
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "status",
+      "created_at",
+      "updated_at",
+      "expires_at",
+      "destination_path"
+    ],
+    "title": "UploadJobResponse",
+    "type": "object"
+  }
+}

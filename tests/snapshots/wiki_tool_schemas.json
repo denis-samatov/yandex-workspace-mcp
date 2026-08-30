@@ -1,0 +1,1725 @@
+{
+  "CommentCreateInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "body": {
+        "maxLength": 100000,
+        "minLength": 1,
+        "title": "Body",
+        "type": "string"
+      },
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      },
+      "parent_comment_id": {
+        "anyOf": [
+          {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Parent Comment Id"
+      }
+    },
+    "required": [
+      "locator",
+      "body"
+    ],
+    "title": "CommentCreateInput",
+    "type": "object"
+  },
+  "DescendantsInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "cursor": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Cursor"
+      },
+      "include_self": {
+        "default": false,
+        "title": "Include Self",
+        "type": "boolean"
+      },
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      },
+      "page_size": {
+        "default": 100,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Page Size",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "locator"
+    ],
+    "title": "DescendantsInput",
+    "type": "object"
+  },
+  "GridCellsUpdateInput": {
+    "$defs": {
+      "GridCellUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "column_id": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Column Id"
+          },
+          "column_slug": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Column Slug"
+          },
+          "row_id": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Row Id",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/$defs/JsonScalar"
+          }
+        },
+        "required": [
+          "row_id",
+          "value"
+        ],
+        "title": "GridCellUpdate",
+        "type": "object"
+      },
+      "JsonScalar": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "cells": {
+        "items": {
+          "$ref": "#/$defs/GridCellUpdate"
+        },
+        "maxItems": 1000,
+        "minItems": 1,
+        "title": "Cells",
+        "type": "array"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "revision": {
+        "minimum": 0,
+        "title": "Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "grid_id",
+      "revision",
+      "cells"
+    ],
+    "title": "GridCellsUpdateInput",
+    "type": "object"
+  },
+  "GridColumnMoveInput": {
+    "additionalProperties": false,
+    "properties": {
+      "column_slug": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Column Slug",
+        "type": "string"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "position": {
+        "minimum": 0,
+        "title": "Position",
+        "type": "integer"
+      },
+      "revision": {
+        "minimum": 0,
+        "title": "Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "grid_id",
+      "revision",
+      "column_slug",
+      "position"
+    ],
+    "title": "GridColumnMoveInput",
+    "type": "object"
+  },
+  "GridColumnsAddInput": {
+    "$defs": {
+      "GridColumnCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "multiple": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Multiple"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "select_options": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Select Options"
+          },
+          "slug": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "string",
+              "number",
+              "checkbox",
+              "date",
+              "select",
+              "staff"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "slug",
+          "type",
+          "required"
+        ],
+        "title": "GridColumnCreate",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "columns": {
+        "items": {
+          "$ref": "#/$defs/GridColumnCreate"
+        },
+        "maxItems": 100,
+        "minItems": 1,
+        "title": "Columns",
+        "type": "array"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "position": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Position"
+      },
+      "revision": {
+        "minimum": 0,
+        "title": "Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "grid_id",
+      "revision",
+      "columns"
+    ],
+    "title": "GridColumnsAddInput",
+    "type": "object"
+  },
+  "GridColumnsDeleteInput": {
+    "additionalProperties": false,
+    "properties": {
+      "column_slugs": {
+        "items": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 100,
+        "minItems": 1,
+        "title": "Column Slugs",
+        "type": "array"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "revision": {
+        "minimum": 0,
+        "title": "Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "grid_id",
+      "revision",
+      "column_slugs"
+    ],
+    "title": "GridColumnsDeleteInput",
+    "type": "object"
+  },
+  "GridCopyInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "destination": {
+        "$ref": "#/$defs/PageLocator"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Title"
+      }
+    },
+    "required": [
+      "grid_id",
+      "destination"
+    ],
+    "title": "GridCopyInput",
+    "type": "object"
+  },
+  "GridCreateInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      },
+      "title": {
+        "maxLength": 255,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "locator",
+      "title"
+    ],
+    "title": "GridCreateInput",
+    "type": "object"
+  },
+  "GridDeleteInput": {
+    "additionalProperties": false,
+    "properties": {
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "revision": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Revision"
+      }
+    },
+    "required": [
+      "grid_id"
+    ],
+    "title": "GridDeleteInput",
+    "type": "object"
+  },
+  "GridGetInput": {
+    "additionalProperties": false,
+    "properties": {
+      "column_slugs": {
+        "anyOf": [
+          {
+            "items": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Column Slugs"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "revision": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Revision"
+      },
+      "row_ids": {
+        "anyOf": [
+          {
+            "items": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Row Ids"
+      }
+    },
+    "required": [
+      "grid_id"
+    ],
+    "title": "GridGetInput",
+    "type": "object"
+  },
+  "GridRowMoveInput": {
+    "additionalProperties": false,
+    "properties": {
+      "after_row_id": {
+        "anyOf": [
+          {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "After Row Id"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "position": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Position"
+      },
+      "revision": {
+        "minimum": 0,
+        "title": "Revision",
+        "type": "integer"
+      },
+      "row_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Row Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "grid_id",
+      "revision",
+      "row_id"
+    ],
+    "title": "GridRowMoveInput",
+    "type": "object"
+  },
+  "GridRowsAddInput": {
+    "$defs": {
+      "JsonScalar": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "after_row_id": {
+        "anyOf": [
+          {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "After Row Id"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "position": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Position"
+      },
+      "revision": {
+        "minimum": 0,
+        "title": "Revision",
+        "type": "integer"
+      },
+      "rows": {
+        "items": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonScalar"
+          },
+          "propertyNames": {
+            "maxLength": 2048,
+            "minLength": 1
+          },
+          "type": "object"
+        },
+        "maxItems": 1000,
+        "minItems": 1,
+        "title": "Rows",
+        "type": "array"
+      }
+    },
+    "required": [
+      "grid_id",
+      "revision",
+      "rows"
+    ],
+    "title": "GridRowsAddInput",
+    "type": "object"
+  },
+  "GridRowsDeleteInput": {
+    "additionalProperties": false,
+    "properties": {
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "revision": {
+        "minimum": 0,
+        "title": "Revision",
+        "type": "integer"
+      },
+      "row_ids": {
+        "items": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 1000,
+        "minItems": 1,
+        "title": "Row Ids",
+        "type": "array"
+      }
+    },
+    "required": [
+      "grid_id",
+      "revision",
+      "row_ids"
+    ],
+    "title": "GridRowsDeleteInput",
+    "type": "object"
+  },
+  "GridUpdateInput": {
+    "$defs": {
+      "GridSort": {
+        "additionalProperties": false,
+        "properties": {
+          "column_slug": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Column Slug",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Direction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column_slug",
+          "direction"
+        ],
+        "title": "GridSort",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "default_sort": {
+        "anyOf": [
+          {
+            "items": {
+              "$ref": "#/$defs/GridSort"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Default Sort"
+      },
+      "grid_id": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Grid Id",
+        "type": "string"
+      },
+      "revision": {
+        "minimum": 0,
+        "title": "Revision",
+        "type": "integer"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Title"
+      }
+    },
+    "required": [
+      "grid_id",
+      "revision"
+    ],
+    "title": "GridUpdateInput",
+    "type": "object"
+  },
+  "PageAppendInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "anchor": {
+        "anyOf": [
+          {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Anchor"
+      },
+      "content": {
+        "maxLength": 2000000,
+        "minLength": 1,
+        "title": "Content",
+        "type": "string"
+      },
+      "location": {
+        "default": "bottom",
+        "enum": [
+          "top",
+          "bottom"
+        ],
+        "title": "Location",
+        "type": "string"
+      },
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      }
+    },
+    "required": [
+      "locator",
+      "content"
+    ],
+    "title": "PageAppendInput",
+    "type": "object"
+  },
+  "PageCloneInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "destination_slug": {
+        "maxLength": 1024,
+        "minLength": 1,
+        "title": "Destination Slug",
+        "type": "string"
+      },
+      "source": {
+        "$ref": "#/$defs/PageLocator"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Title"
+      }
+    },
+    "required": [
+      "source",
+      "destination_slug"
+    ],
+    "title": "PageCloneInput",
+    "type": "object"
+  },
+  "PageCreateInput": {
+    "additionalProperties": false,
+    "properties": {
+      "content": {
+        "maxLength": 2000000,
+        "title": "Content",
+        "type": "string"
+      },
+      "slug": {
+        "maxLength": 1024,
+        "minLength": 1,
+        "title": "Slug",
+        "type": "string"
+      },
+      "title": {
+        "maxLength": 500,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "slug",
+      "title",
+      "content"
+    ],
+    "title": "PageCreateInput",
+    "type": "object"
+  },
+  "PageDeleteInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      }
+    },
+    "required": [
+      "locator"
+    ],
+    "title": "PageDeleteInput",
+    "type": "object"
+  },
+  "PageListInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "cursor": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Cursor"
+      },
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      },
+      "page_size": {
+        "default": 100,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Page Size",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "locator"
+    ],
+    "title": "PageListInput",
+    "type": "object"
+  },
+  "PageLocatorInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      }
+    },
+    "required": [
+      "locator"
+    ],
+    "title": "PageLocatorInput",
+    "type": "object"
+  },
+  "PageRecoverInput": {
+    "additionalProperties": false,
+    "properties": {
+      "recovery_token": {
+        "maxLength": 2048,
+        "minLength": 1,
+        "title": "Recovery Token",
+        "type": "string"
+      }
+    },
+    "required": [
+      "recovery_token"
+    ],
+    "title": "PageRecoverInput",
+    "type": "object"
+  },
+  "PageResourceListInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "cursor": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Cursor"
+      },
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      },
+      "page_size": {
+        "default": 100,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Page Size",
+        "type": "integer"
+      },
+      "resource_types": {
+        "anyOf": [
+          {
+            "items": {
+              "enum": [
+                "attachment",
+                "grid"
+              ],
+              "type": "string"
+            },
+            "maxItems": 2,
+            "minItems": 1,
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Resource Types"
+      }
+    },
+    "required": [
+      "locator"
+    ],
+    "title": "PageResourceListInput",
+    "type": "object"
+  },
+  "PageUpdateInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "allow_merge": {
+        "default": false,
+        "title": "Allow Merge",
+        "type": "boolean"
+      },
+      "content": {
+        "anyOf": [
+          {
+            "maxLength": 2000000,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Content"
+      },
+      "is_silent": {
+        "default": false,
+        "title": "Is Silent",
+        "type": "boolean"
+      },
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Title"
+      }
+    },
+    "required": [
+      "locator"
+    ],
+    "title": "PageUpdateInput",
+    "type": "object"
+  },
+  "WikiAttachmentUploadInput": {
+    "$defs": {
+      "PageLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "title": "PageLocator",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "append_location": {
+        "default": "bottom",
+        "enum": [
+          "top",
+          "bottom"
+        ],
+        "title": "Append Location",
+        "type": "string"
+      },
+      "append_markup": {
+        "default": false,
+        "title": "Append Markup",
+        "type": "boolean"
+      },
+      "file_path": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "File Path",
+        "type": "string"
+      },
+      "locator": {
+        "$ref": "#/$defs/PageLocator"
+      }
+    },
+    "required": [
+      "locator",
+      "file_path"
+    ],
+    "title": "WikiAttachmentUploadInput",
+    "type": "object"
+  },
+  "WikiSearchInput": {
+    "additionalProperties": false,
+    "properties": {
+      "cursor": {
+        "default": null,
+        "title": "Cursor",
+        "type": "null"
+      },
+      "limit": {
+        "default": 50,
+        "maximum": 50,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      },
+      "page": {
+        "default": 1,
+        "minimum": 1,
+        "title": "Page",
+        "type": "integer"
+      },
+      "query": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Query",
+        "type": "string"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "title": "WikiSearchInput",
+    "type": "object"
+  }
+}

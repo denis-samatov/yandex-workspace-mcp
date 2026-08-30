@@ -1,0 +1,358 @@
+import hashlib
+import hmac
+import json
+import math
+import time
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any, TypeVar
+
+from pydantic import BaseModel
+
+from ..models.errors import ConfigurationError
+from .models import (
+    AccessTokenRecord,
+    AuthorizationCodeRecord,
+    DownstreamCredentialRecord,
+    OAuthClientRecord,
+    OAuthStateRecord,
+    RecoveryHandleRecord,
+    RefreshTokenRecord,
+)
+from .stores import EncryptedRecord, EncryptedRecordCodec, TokenStoreMiss
+
+RecordT = TypeVar("RecordT", bound=BaseModel)
+
+
+_CONSUME_SCRIPT = """
+local value = redis.call('GET', KEYS[1])
+if not value then return false end
+redis.call('DEL', KEYS[1])
+return value
+"""
+
+_ROTATE_PAIR_SCRIPT = """
+local value = redis.call('GET', KEYS[1])
+if not value or value ~= ARGV[1] then return false end
+local key_count = tonumber(ARGV[2])
+redis.call('DEL', KEYS[1])
+for index = 2, #KEYS do
+  redis.call('DEL', KEYS[index])
+end
+local refresh_key = 2 + key_count
+local access_key = 2 + (2 * key_count)
+if tonumber(ARGV[4]) > 0 then
+  redis.call('SET', KEYS[refresh_key], ARGV[3], 'EX', ARGV[4])
+else
+  redis.call('SET', KEYS[refresh_key], ARGV[3])
+end
+if tonumber(ARGV[6]) > 0 then
+  redis.call('SET', KEYS[access_key], ARGV[5], 'EX', ARGV[6])
+else
+  redis.call('SET', KEYS[access_key], ARGV[5])
+end
+return value
+"""
+
+_REGISTER_CLIENT_SCRIPT = """
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', ARGV[4])
+local exists = redis.call('ZSCORE', KEYS[2], ARGV[3])
+if not exists and redis.call('ZCARD', KEYS[2]) >= tonumber(ARGV[5]) then return false end
+redis.call('DEL', unpack(KEYS, 3))
+if tonumber(ARGV[2]) > 0 then
+  redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])
+else
+  redis.call('SET', KEYS[1], ARGV[1])
+end
+redis.call('ZADD', KEYS[2], ARGV[6], ARGV[3])
+return true
+"""
+
+
+class RedisTokenStore:
+    """Encrypted Redis store; Redis keys contain keyed hashes, never bearer tokens."""
+
+    def __init__(
+        self,
+        keys: tuple[bytes, ...],
+        *,
+        url: str | None = None,
+        client: Any | None = None,
+        prefix: str = "ywmcp:auth:v1",
+        clock: Callable[[], float] = time.time,
+        registration_cap: int = 100,
+    ) -> None:
+        if client is None:
+            if not url:
+                raise ConfigurationError("Redis auth storage requires a URL.")
+            try:
+                redis_asyncio = import_module("redis.asyncio")
+            except ImportError as exc:
+                raise ConfigurationError(
+                    "Redis auth storage requires the 'multi-user' package extra."
+                ) from exc
+            client = redis_asyncio.Redis.from_url(url, decode_responses=False)
+            self._owns_client = True
+        else:
+            self._owns_client = False
+        self._client = client
+        self._codec = EncryptedRecordCodec(keys)
+        self._lookup_keys = tuple(key[:32] for key in keys)
+        self._prefix = prefix
+        self._clock = clock
+        self._registration_cap = registration_cap
+        self._closed = False
+
+    async def open(self) -> None:
+        if self._closed:
+            raise ConfigurationError("Redis token store is closed.")
+        await self._client.ping()
+
+    def _redis_keys(self, kind: str, record_key: str) -> tuple[str, ...]:
+        return tuple(
+            f"{self._prefix}:{kind}:"
+            + hmac.new(key, f"lookup\0{kind}\0{record_key}".encode(), hashlib.sha256).hexdigest()
+            for key in self._lookup_keys
+        )
+
+    def _encode(self, kind: str, record_key: str, record: BaseModel) -> bytes:
+        encrypted = self._codec.encrypt(kind, record_key, record.model_dump_json().encode())
+        return json.dumps(
+            {
+                "key_id": encrypted.key_id,
+                "nonce": encrypted.nonce,
+                "ciphertext": encrypted.ciphertext,
+            },
+            separators=(",", ":"),
+        ).encode()
+
+    def _decode(
+        self, kind: str, record_key: str, payload: bytes | str, model: type[RecordT]
+    ) -> RecordT:
+        try:
+            value = json.loads(payload)
+            encrypted = EncryptedRecord(
+                key_id=value["key_id"], nonce=value["nonce"], ciphertext=value["ciphertext"]
+            )
+            plaintext = self._codec.decrypt(kind, record_key, encrypted)
+            return model.model_validate_json(plaintext)
+        except (KeyError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise TokenStoreMiss() from exc
+
+    def _ttl(self, expires_at: float | None) -> int | None:
+        if expires_at is None:
+            return None
+        remaining = math.ceil(expires_at - self._clock())
+        if remaining <= 0:
+            raise TokenStoreMiss()
+        return remaining
+
+    async def _put(self, kind: str, key: str, record: BaseModel) -> None:
+        if self._closed:
+            raise TokenStoreMiss()
+        redis_key = self._redis_keys(kind, key)[0]
+        payload = self._encode(kind, key, record)
+        ttl = self._ttl(getattr(record, "expires_at", None))
+        candidates = self._redis_keys(kind, key)
+        pipeline = self._client.pipeline(transaction=True)
+        pipeline.delete(*candidates)
+        pipeline.set(redis_key, payload, ex=ttl)
+        await pipeline.execute()
+
+    async def _find(self, kind: str, key: str) -> tuple[str, bytes]:
+        if self._closed:
+            raise TokenStoreMiss()
+        for candidate in self._redis_keys(kind, key):
+            payload = await self._client.get(candidate)
+            if payload is not None:
+                return candidate, payload
+        raise TokenStoreMiss()
+
+    async def _get(self, kind: str, key: str, model: type[RecordT]) -> RecordT:
+        _, payload = await self._find(kind, key)
+        return self._decode(kind, key, payload, model)
+
+    async def _consume(self, kind: str, key: str, model: type[RecordT]) -> RecordT:
+        candidate, _ = await self._find(kind, key)
+        payload = await self._client.eval(_CONSUME_SCRIPT, 1, candidate)
+        if not payload:
+            raise TokenStoreMiss()
+        return self._decode(kind, key, payload, model)
+
+    async def put_client(self, record: OAuthClientRecord) -> None:
+        candidates = self._redis_keys("client", record.client_id)
+        redis_key = candidates[0]
+        source_hash = hmac.new(
+            self._lookup_keys[0],
+            f"registration-source\0{record.registration_source}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        source_key = f"{self._prefix}:registration-source:{source_hash}"
+        payload = self._encode("client", record.client_id, record)
+        ttl = self._ttl(record.expires_at) or 0
+        score = record.expires_at if record.expires_at is not None else 9_999_999_999.0
+        result = await self._client.eval(
+            _REGISTER_CLIENT_SCRIPT,
+            2 + len(candidates),
+            redis_key,
+            source_key,
+            *candidates,
+            payload,
+            ttl,
+            redis_key,
+            self._clock(),
+            self._registration_cap,
+            score,
+        )
+        if not result:
+            raise ConfigurationError("OAuth client registration capacity reached.")
+
+    async def get_client(self, client_id: str) -> OAuthClientRecord:
+        return await self._get("client", client_id, OAuthClientRecord)
+
+    async def put_state(self, state: str, record: OAuthStateRecord) -> None:
+        await self._put("state", state, record)
+
+    async def consume_state(self, state: str) -> OAuthStateRecord:
+        return await self._consume("state", state, OAuthStateRecord)
+
+    async def get_state(self, state: str) -> OAuthStateRecord:
+        return await self._get("state", state, OAuthStateRecord)
+
+    async def put_authorization_code(self, code: str, record: AuthorizationCodeRecord) -> None:
+        await self._put("authorization-code", code, record)
+
+    async def consume_authorization_code(self, code: str) -> AuthorizationCodeRecord:
+        return await self._consume("authorization-code", code, AuthorizationCodeRecord)
+
+    async def get_authorization_code(self, code: str) -> AuthorizationCodeRecord:
+        return await self._get("authorization-code", code, AuthorizationCodeRecord)
+
+    async def put_access_token(self, token: str, record: AccessTokenRecord) -> None:
+        await self._put("access-token", token, record)
+
+    async def get_access_token(self, token: str) -> AccessTokenRecord:
+        return await self._get("access-token", token, AccessTokenRecord)
+
+    async def put_refresh_token(self, token: str, record: RefreshTokenRecord) -> None:
+        await self._put("refresh-token", token, record)
+
+    async def get_refresh_token(self, token: str) -> RefreshTokenRecord:
+        return await self._get("refresh-token", token, RefreshTokenRecord)
+
+    async def put_token_pair(
+        self,
+        *,
+        access_token: str,
+        access_record: AccessTokenRecord,
+        refresh_token: str,
+        refresh_record: RefreshTokenRecord,
+    ) -> None:
+        self._validate_pair(access_token, access_record, refresh_token, refresh_record)
+        access_keys = self._redis_keys("access-token", access_token)
+        refresh_keys = self._redis_keys("refresh-token", refresh_token)
+        access_payload = self._encode("access-token", access_token, access_record)
+        refresh_payload = self._encode("refresh-token", refresh_token, refresh_record)
+        access_ttl = self._ttl(access_record.expires_at)
+        refresh_ttl = self._ttl(refresh_record.expires_at)
+        pipeline = self._client.pipeline(transaction=True)
+        pipeline.delete(*access_keys, *refresh_keys)
+        pipeline.set(access_keys[0], access_payload, ex=access_ttl)
+        pipeline.set(refresh_keys[0], refresh_payload, ex=refresh_ttl)
+        await pipeline.execute()
+
+    async def rotate_token_pair(
+        self,
+        *,
+        old_refresh_token: str,
+        new_refresh_token: str,
+        new_refresh_record: RefreshTokenRecord,
+        new_access_token: str,
+        new_access_record: AccessTokenRecord,
+    ) -> RefreshTokenRecord:
+        self._validate_pair(
+            new_access_token, new_access_record, new_refresh_token, new_refresh_record
+        )
+        old_key, old_payload = await self._find("refresh-token", old_refresh_token)
+        old_record = self._decode(
+            "refresh-token", old_refresh_token, old_payload, RefreshTokenRecord
+        )
+        old_access_keys = self._redis_keys("access-token", old_record.access_token or "")
+        new_refresh_keys = self._redis_keys("refresh-token", new_refresh_token)
+        new_access_keys = self._redis_keys("access-token", new_access_token)
+        refresh_payload = self._encode("refresh-token", new_refresh_token, new_refresh_record)
+        access_payload = self._encode("access-token", new_access_token, new_access_record)
+        refresh_ttl = self._ttl(new_refresh_record.expires_at) or 0
+        access_ttl = self._ttl(new_access_record.expires_at) or 0
+        result = await self._client.eval(
+            _ROTATE_PAIR_SCRIPT,
+            1 + len(old_access_keys) + len(new_refresh_keys) + len(new_access_keys),
+            old_key,
+            *old_access_keys,
+            *new_refresh_keys,
+            *new_access_keys,
+            old_payload,
+            len(self._lookup_keys),
+            refresh_payload,
+            refresh_ttl,
+            access_payload,
+            access_ttl,
+        )
+        if not result:
+            raise TokenStoreMiss()
+        return old_record
+
+    @staticmethod
+    def _validate_pair(
+        access_token: str,
+        access_record: AccessTokenRecord,
+        refresh_token: str,
+        refresh_record: RefreshTokenRecord,
+    ) -> None:
+        if (
+            access_record.refresh_token != refresh_token
+            or refresh_record.access_token != access_token
+            or access_record.client_id != refresh_record.client_id
+            or access_record.subject != refresh_record.subject
+            or access_record.scopes != refresh_record.scopes
+        ):
+            raise ConfigurationError("OAuth token pair is inconsistent.")
+
+    async def revoke_token_pair(
+        self, *, access_token: str | None, refresh_token: str | None
+    ) -> None:
+        keys: list[str] = []
+        if access_token:
+            keys.extend(self._redis_keys("access-token", access_token))
+        if refresh_token:
+            keys.extend(self._redis_keys("refresh-token", refresh_token))
+        if keys:
+            await self._client.delete(*keys)
+
+    async def put_downstream(self, principal_id: str, record: DownstreamCredentialRecord) -> None:
+        if principal_id != record.principal_id:
+            raise ConfigurationError("Downstream credential principal mismatch.")
+        await self._put("downstream", principal_id, record)
+
+    async def get_downstream(self, principal_id: str) -> DownstreamCredentialRecord:
+        return await self._get("downstream", principal_id, DownstreamCredentialRecord)
+
+    async def delete_downstream(self, principal_id: str) -> None:
+        await self._client.delete(*self._redis_keys("downstream", principal_id))
+
+    async def put_recovery(
+        self, handle: str, principal_id: str, record: RecoveryHandleRecord
+    ) -> None:
+        if not hmac.compare_digest(principal_id, record.principal_id):
+            raise ConfigurationError("Recovery handle principal mismatch.")
+        await self._put("recovery", f"{principal_id}\0{handle}", record)
+
+    async def consume_recovery(self, handle: str, principal_id: str) -> RecoveryHandleRecord:
+        return await self._consume("recovery", f"{principal_id}\0{handle}", RecoveryHandleRecord)
+
+    async def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            await self._client.aclose()

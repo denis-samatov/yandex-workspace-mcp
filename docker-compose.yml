@@ -2,8 +2,89 @@ services:
   yandex-workspace-mcp:
     build: .
     env_file:
-      - .env
+      - path: .env
+        required: false
     # Only relevant if using streamable-http and we map a port. For stdio, it runs as a one-shot or attached process.
     # We leave this generic for now.
     environment:
       - MCP_TRANSPORT=stdio
+
+  mcp-static:
+    build: .
+    profiles: ["static"]
+    env_file:
+      - path: .env
+        required: false
+    command: ["--transport", "streamable-http"]
+    environment:
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_AUTH_MODE: static
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+      MCP_ISSUER_URL: ${MCP_ISSUER_URL:-https://mcp.example.invalid}
+      MCP_RESOURCE_SERVER_URL: ${MCP_RESOURCE_SERVER_URL:-https://mcp.example.invalid}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-mcp.example.invalid}
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS:-https://app.example.invalid}
+      MCP_CURSOR_KEYS: ${MCP_CURSOR_KEYS:-}
+      MCP_TOKEN_ENCRYPTION_KEYS: ${MCP_TOKEN_ENCRYPTION_KEYS:-}
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  mcp-multi-user:
+    build: .
+    profiles: ["multi-user"]
+    env_file:
+      - path: .env
+        required: false
+    command: ["--transport", "streamable-http"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_AUTH_MODE: multi-user
+      YANDEX_AUTH_MODE: multi-user
+      YANDEX_OAUTH_TOKEN: ""
+      YANDEX_IAM_TOKEN: ""
+      YANDEX_IAM_ORG_ID: ""
+      AUTH_STORE_BACKEND: redis
+      REDIS_URL: redis://redis:6379/0
+      MCP_ISSUER_URL: ${MCP_ISSUER_URL:-https://mcp.example.invalid}
+      MCP_RESOURCE_SERVER_URL: ${MCP_RESOURCE_SERVER_URL:-https://mcp.example.invalid}
+      MCP_OAUTH_CALLBACK_URL: ${MCP_OAUTH_CALLBACK_URL:-https://mcp.example.invalid/oauth/yandex/callback}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-mcp.example.invalid}
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS:-https://app.example.invalid}
+      MCP_CURSOR_KEYS: ${MCP_CURSOR_KEYS:-}
+      MCP_TOKEN_ENCRYPTION_KEYS: ${MCP_TOKEN_ENCRYPTION_KEYS:-}
+      YANDEX_OAUTH_CLIENT_ID: ${YANDEX_OAUTH_CLIENT_ID:-}
+      YANDEX_OAUTH_CLIENT_SECRET: ${YANDEX_OAUTH_CLIENT_SECRET:-}
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  redis:
+    image: redis:7.4-alpine
+    profiles: ["multi-user"]
+    command: ["redis-server", "--save", "", "--appendonly", "yes"]
+    volumes:
+      - redis-auth:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+
+  redis-test:
+    image: redis:7.4-alpine
+    profiles: ["test"]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 1s
+      retries: 20
+
+volumes:
+  redis-auth:
