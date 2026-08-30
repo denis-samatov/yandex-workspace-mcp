@@ -18,7 +18,7 @@ This server provides a safe, unified interface for AI assistants to search, read
 ## Installation
 
 ```bash
-git clone https://github.com/your-org/yandex-workspace-mcp.git
+git clone https://github.com/denis-samatov/yandex-workspace-mcp.git
 cd yandex-workspace-mcp
 uv sync
 ```

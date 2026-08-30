@@ -27,7 +27,6 @@ jobs:
       - name: Check formatting without rewriting preserved baseline files
         run: >-
           uv run ruff format --check .
-          --exclude src/yandex_workspace_mcp/exceptions.py
           --exclude tests/security/test_ssrf.py
       - run: uv run mypy src tests
       - name: Verify generated schemas
