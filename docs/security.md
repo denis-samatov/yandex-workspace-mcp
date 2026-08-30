@@ -15,7 +15,14 @@ All paths provided by the agent are:
 Operations attempting to access paths outside the whitelist will raise a `PermissionDenied` error.
 
 ## 3. Safe Uploads/Downloads
-To prevent SSRF and arbitrary local file reads, `disk_upload` and `disk_read` do not transfer binary data directly. They return signed Yandex API URLs. The client/agent is responsible for executing the HTTP request to fetch or push the data.
+`disk_upload` and `disk_read` transfer content through the server, not the
+agent: the server first requests a signed Yandex Disk URL, then validates it
+(`validate_yandex_signed_url`) before using it — the URL's scheme must be
+HTTPS, its host must be `yandex.net` or a subdomain, and it must not resolve
+to a private/loopback/link-local IP. This prevents SSRF against internal or
+local endpoints even if the URL Yandex returns were ever attacker-influenced.
+The signed-URL fetch/push uses a separate unauthenticated `httpx` client so
+the OAuth token is never sent to it.
 
 ## 4. Audit Logging
 Every modifying operation (`create`, `update`, `append`, `move`, `copy`, `delete`) emits a structured JSON audit log entry.
