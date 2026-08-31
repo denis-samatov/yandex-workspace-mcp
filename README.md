@@ -1,5 +1,9 @@
 # Yandex Workspace MCP
 
+[![CI](https://github.com/denis-samatov/yandex-workspace-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/denis-samatov/yandex-workspace-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)
+
 A production-ready Model Context Protocol (MCP) server for integrating AI agents with **Yandex Disk** and **Yandex Wiki**.
 
 This server provides a safe, unified interface for AI assistants to search, read, and intelligently update data in Yandex Disk and Yandex Wiki, without resorting to scraping or undocumented APIs. 
