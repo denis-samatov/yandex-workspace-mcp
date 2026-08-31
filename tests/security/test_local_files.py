@@ -37,7 +37,10 @@ def test_descriptor_opener_rejects_parent_and_final_symlinks(tmp_path: Path) -> 
             open_allowed_local_file(str(candidate), [str(allowed)], max_bytes=100)
 
 
-@pytest.mark.skipif(os.name != "posix", reason="open_allowed_local_file() intentionally refuses all local access on non-POSIX systems")
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="open_allowed_local_file() intentionally refuses all local access on non-POSIX systems",
+)
 def test_regular_size_and_descriptor_identity_are_checked(tmp_path: Path) -> None:
     allowed = tmp_path / "allowed"
     allowed.mkdir()
@@ -80,7 +83,10 @@ def test_open_handle_remains_usable_without_reopening_path(tmp_path: Path) -> No
 
 
 @pytest.mark.asyncio
-@pytest.mark.skipif(os.name != "posix", reason="open_allowed_local_file() intentionally refuses all local access on non-POSIX systems")
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="open_allowed_local_file() intentionally refuses all local access on non-POSIX systems",
+)
 async def test_disk_local_upload_owns_and_closes_authorized_descriptor(tmp_path: Path) -> None:
     allowed = tmp_path / "allowed"
     allowed.mkdir()
