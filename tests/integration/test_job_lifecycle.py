@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,11 @@ from yandex_workspace_mcp.jobs.uploads import UploadJobStore
 from yandex_workspace_mcp.models.errors import InvalidPath
 from yandex_workspace_mcp.policies.cursors import CursorCodec
 from yandex_workspace_mcp.policies.local_files import open_allowed_local_file
+
+pytestmark = pytest.mark.skipif(
+    os.name != "posix",
+    reason="open_allowed_local_file() intentionally refuses all local access on non-POSIX systems",
+)
 
 
 @pytest.mark.asyncio

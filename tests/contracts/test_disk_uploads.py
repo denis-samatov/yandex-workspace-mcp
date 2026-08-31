@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -10,6 +11,10 @@ from yandex_workspace_mcp.policies.local_files import open_allowed_local_file
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="open_allowed_local_file() intentionally refuses all local access on non-POSIX systems",
+)
 async def test_local_upload_requests_one_link_then_one_guarded_put(tmp_path: Path) -> None:
     source = tmp_path / "payload.bin"
     source.write_bytes(b"payload")

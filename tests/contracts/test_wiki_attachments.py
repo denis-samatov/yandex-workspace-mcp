@@ -1,4 +1,5 @@
 import ipaddress
+import os
 from pathlib import Path
 
 import httpx
@@ -28,6 +29,10 @@ def test_signed_url_rejects_unsafe_shapes(url: str) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="open_allowed_local_file() intentionally refuses all local access on non-POSIX systems",
+)
 async def test_signed_upload_has_no_authorization_redirect_or_retry(tmp_path: Path) -> None:
     allowed = tmp_path / "allowed"
     allowed.mkdir()
@@ -86,6 +91,10 @@ class _PeerStream:
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="open_allowed_local_file() intentionally refuses all local access on non-POSIX systems",
+)
 async def test_wiki_attachment_uses_open_handle_and_exact_session_flow(tmp_path: Path) -> None:
     allowed = tmp_path / "allowed"
     allowed.mkdir()
