@@ -1,0 +1,29 @@
+name: API contract or reproducibility problem
+description: Report a mismatch in a documented tool contract, schema snapshot, or diagnostic result
+title: "repro: "
+labels: ["reproducibility"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include OAuth tokens, private document contents, organization identifiers, or sensitive paths.
+  - type: textarea
+    id: target
+    attributes:
+      label: Tool, contract, or command
+      description: Identify the MCP tool, schema snapshot, diagnostic, or documented command.
+    validations:
+      required: true
+  - type: textarea
+    id: mismatch
+    attributes:
+      label: Observed mismatch
+      description: Include sanitized output and the expected documented behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Version or commit, transport, enabled services, Python version, and sanitized configuration flags.
+    validations:
+      required: true
