@@ -4,9 +4,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)
 
-A production-ready Model Context Protocol (MCP) server for integrating AI agents with **Yandex Disk** and **Yandex Wiki**.
+A Model Context Protocol (MCP) server with explicit permission controls for integrating AI agents with **Yandex Disk** and **Yandex Wiki**.
 
-This server provides a safe, unified interface for AI assistants to search, read, and intelligently update data in Yandex Disk and Yandex Wiki, without resorting to scraping or undocumented APIs. 
+This server provides a unified interface for AI assistants to search, read, and intelligently update data in Yandex Disk and Yandex Wiki, without resorting to scraping or undocumented APIs.
+
+## Start here
+
+- **Review the engineering:** run the [credential-free permission demo](examples/permission_demo.py) and inspect [permission regression tests](tests/security/test_permission_gating.py).
+- **Connect a client:** follow the [minimal read-only quick start](docs/quickstart.md), then the client configuration below.
+- **Deploy:** read [authentication](docs/authentication.md), [deployment](docs/deployment.md), and [security](SECURITY.md).
+
+The offline example uses a mocked upstream client. It demonstrates local authorization behavior; it does not validate Yandex availability, live API parity, load capacity, or a particular deployment. The opt-in contract sweep below checks a different, live integration boundary.
 
 ## Features
 
