@@ -10,8 +10,11 @@ from yandex_workspace_mcp.services.disk import DiskService
 async def main() -> None:
     client = AsyncMock()
     read_only = DiskService(
-        client=client, allowed_roots=["/Work"],
-        can_read=True, can_write=False, can_delete=False,
+        client=client,
+        allowed_roots=["/Work"],
+        can_read=True,
+        can_write=False,
+        can_delete=False,
     )
     try:
         await read_only.upload("/Work/note.txt", "synthetic example")
@@ -22,8 +25,11 @@ async def main() -> None:
         raise AssertionError("Read-only write unexpectedly succeeded")
 
     writable = DiskService(
-        client=client, allowed_roots=["/Work"],
-        can_read=True, can_write=True, can_delete=False,
+        client=client,
+        allowed_roots=["/Work"],
+        can_read=True,
+        can_write=True,
+        can_delete=False,
         signed_client=AsyncMock(),
     )
     try:
