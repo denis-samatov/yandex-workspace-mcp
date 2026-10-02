@@ -10,6 +10,16 @@ A Model Context Protocol (MCP) server with explicit permission controls for inte
 
 This server provides a unified interface for AI assistants to search, read, and intelligently update data in Yandex Disk and Yandex Wiki, without resorting to scraping or undocumented APIs.
 
+## At a glance
+
+| | |
+|---|---|
+| **What** | MCP server that gives AI agents governed access to Yandex Disk and Yandex Wiki. |
+| **Scope** | 50+ typed tools; unified Disk + Wiki search. |
+| **Safety** | Read-only by default, separate read/write/delete permissions, path allowlisting, structured audit log of write and destructive operations. |
+| **Quality** | Security and permission regression tests, opt-in live contract sweep, CI, Docker. |
+| **Limits** | The offline demo uses a mocked upstream; it does not validate live API parity or load capacity. |
+
 ## Start here
 
 - **Review the engineering:** run the [credential-free permission demo](examples/permission_demo.py) and inspect [permission regression tests](tests/security/test_permission_gating.py).
