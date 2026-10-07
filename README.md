@@ -28,6 +28,26 @@ This server provides a unified interface for AI assistants to search, read, and 
 
 The offline example uses a mocked upstream client. It demonstrates local authorization behavior; it does not validate Yandex availability, live API parity, load capacity, or a particular deployment. The opt-in contract sweep below checks a different, live integration boundary.
 
+## Test the tool exposure policy
+
+The development test suite uses [mcp-capguard](https://github.com/denis-samatov/mcp-capguard)
+to check readonly, editor without deletion, and disabled-service profiles against
+the real application factory. No API keys are needed and no tools are invoked:
+
+```bash
+uv sync --locked --dev
+uv run pytest -q tests/security/test_capguard.py
+uv run capguard check --profiles tests.capguard_profiles:capguard_profiles
+```
+
+The four tests include a negative control that enables actual Wiki write settings
+while keeping the readonly policy and confirms that capguard rejects the write
+tools. The standard CI pytest step runs these tests on every supported platform.
+Only explicitly required and forbidden tool names are checked; maintain the
+policy in [tests/capguard_profiles.py](tests/capguard_profiles.py) when adding tools.
+These checks complement the existing exact registration, service authorization,
+and API contract tests.
+
 ## Features
 
 - **Yandex Disk Integration**: 22 parity tools plus `disk_read` and inline `disk_upload` cover capacity, list/recent/search, metadata, signed links, uploads, mutations, public resources, Trash, and bounded local jobs.

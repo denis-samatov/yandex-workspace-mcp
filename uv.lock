@@ -408,6 +408,14 @@ cli = [
 ]
 
 [[package]]
+name = "mcp-capguard"
+version = "0.1.1"
+source = { git = "https://github.com/denis-samatov/mcp-capguard.git?rev=bac2fc77577a4de3999f84f97e685a9231cf11f8#bac2fc77577a4de3999f84f97e685a9231cf11f8" }
+dependencies = [
+    { name = "pytest" },
+]
+
+[[package]]
 name = "mcp-types"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -915,6 +923,7 @@ multi-user = [
 [package.dev-dependencies]
 dev = [
     { name = "build" },
+    { name = "mcp-capguard" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -938,6 +947,7 @@ provides-extras = ["multi-user"]
 [package.metadata.requires-dev]
 dev = [
     { name = "build", specifier = ">=1.2" },
+    { name = "mcp-capguard", git = "https://github.com/denis-samatov/mcp-capguard.git?rev=bac2fc77577a4de3999f84f97e685a9231cf11f8" },
     { name = "mypy", specifier = ">=1.11.0" },
     { name = "pytest", specifier = ">=8.3.0" },
     { name = "pytest-asyncio", specifier = ">=0.24.0" },

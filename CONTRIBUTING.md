@@ -19,6 +19,12 @@ uv run python scripts/check_tool_matrix.py
 
 If a change affects authentication, deployment, permissions, or API drift, update the corresponding documentation under `docs/` and add focused tests.
 
+When adding or changing tools, review the declared capguard policies in
+`tests/capguard_profiles.py`. Run `uv run pytest -q tests/security/test_capguard.py`
+or `uv run capguard check --profiles tests.capguard_profiles:capguard_profiles`
+to verify registration boundaries. Keep the existing execution authorization tests:
+tool exposure checks cover declared names, not runtime access to data.
+
 ## Pull requests
 
 - Describe the user-visible behavior and security boundary.

@@ -22,6 +22,7 @@ yandex-workspace-mcp = "yandex_workspace_mcp.main:main"
 
 [dependency-groups]
 dev = [
+    "mcp-capguard @ git+https://github.com/denis-samatov/mcp-capguard.git@bac2fc77577a4de3999f84f97e685a9231cf11f8",
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "respx>=0.21.0",
@@ -42,6 +43,8 @@ target-version = "py312"
 python_version = "3.12"
 
 [tool.pytest.ini_options]
+capguard_profiles = "tests.capguard_profiles:capguard_profiles"
+pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
