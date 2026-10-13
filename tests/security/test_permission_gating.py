@@ -12,7 +12,7 @@ from yandex_workspace_mcp.services.wiki import WikiService
 def make_disk_service(*, can_read=True, can_write=True, can_delete=True, allowed_roots=None):
     return DiskService(
         client=AsyncMock(),
-        allowed_roots=allowed_roots or ["/"],
+        allowed_roots=["/"] if allowed_roots is None else allowed_roots,
         can_read=can_read,
         can_write=can_write,
         can_delete=can_delete,
@@ -22,7 +22,7 @@ def make_disk_service(*, can_read=True, can_write=True, can_delete=True, allowed
 def make_wiki_service(*, can_read=True, can_write=True, can_delete=True, allowed_roots=None):
     return WikiService(
         client=AsyncMock(),
-        allowed_roots=allowed_roots or ["/"],
+        allowed_roots=["/"] if allowed_roots is None else allowed_roots,
         can_read=can_read,
         can_write=can_write,
         can_delete=can_delete,
@@ -92,3 +92,21 @@ async def test_wiki_write_rejected_for_out_of_tree_slug():
     with pytest.raises(InvalidPath):
         await svc.create_page("personal/diary", "Title", "body")
     svc.client.create_page.assert_not_awaited()
+
+
+def test_empty_allowed_roots_is_rejected_when_any_permission_is_enabled():
+    with pytest.raises(InvalidPath):
+        make_disk_service(allowed_roots=[])
+    with pytest.raises(InvalidPath):
+        make_wiki_service(allowed_roots=[])
+
+
+@pytest.mark.asyncio
+async def test_disk_empty_allowed_roots_without_permissions_denies_every_operation():
+    svc = make_disk_service(can_read=False, can_write=False, can_delete=False, allowed_roots=[])
+    with pytest.raises(PermissionDenied):
+        await svc.read_file("/Work/note.txt")
+    with pytest.raises(PermissionDenied):
+        await svc.upload("/Work/note.txt", "content")
+    svc.client.get_metadata.assert_not_awaited()
+    svc.client.upload_inline_text.assert_not_awaited()
