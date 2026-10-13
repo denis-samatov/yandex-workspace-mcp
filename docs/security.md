@@ -10,7 +10,7 @@ Agents are sandboxed to specific directories/projects via `DISK_ALLOWED_ROOTS` a
 All paths provided by the agent are:
 1. Stripped of schema prefixes.
 2. Normalized to resolve `.` and `..`.
-3. Checked for path traversal attacks (e.g. `%2e%2e`).
+3. Checked for path traversal attacks: percent-escapes are decoded exactly once, and escapes for `%`, `.`, `/`, `\` or control characters (e.g. `%2e%2e`, `%2F`, `%2525`) are rejected, so normalization is idempotent. Paths returned by Yandex are filtered through the same policy before they reach the agent.
 4. Validated to ensure they fall under one of the configured `allowed_roots`.
 Operations attempting to access paths outside the whitelist will raise a `PermissionDenied` error.
 

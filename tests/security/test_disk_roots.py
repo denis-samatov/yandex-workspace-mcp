@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from yandex_workspace_mcp.models.disk import DiskLinkResponse, DiskResource, DiskResourcePage
-from yandex_workspace_mcp.models.errors import InvalidPath
+from yandex_workspace_mcp.models.errors import InvalidPath, UpstreamUnavailable
 from yandex_workspace_mcp.policies.cursors import CursorCodec
 from yandex_workspace_mcp.services.disk import DiskService
 
@@ -154,3 +154,39 @@ async def test_list_filters_embedded_children_and_recent_filters_every_item() ->
     assert [item.path for item in listed.embedded.items] == ["/Work/ok.txt"]
     assert [item.path for item in recent.items] == ["/Work/new.txt"]
     assert str(link.download_url).startswith("https://downloader.disk.yandex.net/")
+
+
+@pytest.mark.asyncio
+async def test_disk_search_drops_upstream_items_with_encoded_traversal() -> None:
+    client = AsyncMock()
+    client.list_files.return_value = DiskResourcePage(
+        items=[
+            _resource("/Work/needle.txt"),
+            _resource("/Personal/%2E%2E/Work/needle-2.txt"),
+            _resource("/Personal%2F..%2FWork/needle-3.txt"),
+        ],
+        limit=50,
+        offset=0,
+    )
+    service = _service(client, ["/Work"])
+
+    result = await service.search("needle", limit=50, principal="person")
+
+    assert [item.path for item in result.items] == ["/Work/needle.txt"]
+
+
+@pytest.mark.asyncio
+async def test_disk_search_propagates_upstream_failure_instead_of_partial_result() -> None:
+    client = AsyncMock()
+    client.list_files.side_effect = [
+        DiskResourcePage(
+            items=[_resource("/Work/needle.txt"), _resource("/Work/other.txt")],
+            limit=2,
+            offset=0,
+        ),
+        UpstreamUnavailable(),
+    ]
+    service = _service(client, ["/Work"])
+
+    with pytest.raises(UpstreamUnavailable):
+        await service.search("needle", limit=2, principal="person")

@@ -121,6 +121,36 @@ async def test_signed_download_rejects_redirect_peer_mismatch_and_oversize() -> 
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("body", "allowed"), [(b"x" * 5, True), (b"x" * 6, False)])
+async def test_signed_download_bounds_chunked_body_without_content_length(
+    body: bytes, allowed: bool
+) -> None:
+    async def stream():
+        yield body[:3]
+        yield body[3:]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=stream(),
+            extensions={"network_stream": _PeerStream("8.8.8.8")},
+            request=request,
+        )
+
+    client = SignedTransferClient(
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        resolver=_public,
+    )
+    url = "https://downloader.disk.yandex.net/file?secret=value"
+    if allowed:
+        assert await client.download(url, max_bytes=5) == body
+    else:
+        with pytest.raises(PermissionDenied):
+            await client.download(url, max_bytes=5)
+    await client.close()
+
+
+@pytest.mark.asyncio
 async def test_signed_upload_streams_and_rejects_oversized_response_body() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(

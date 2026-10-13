@@ -6,6 +6,9 @@ import urllib.parse
 from ..models.errors import InvalidPath
 
 _PERCENT_ESCAPE = re.compile(r"%[0-9A-Fa-f]{2}")
+# Escapes for these ASCII bytes would change path structure or re-introduce escapes once
+# decoded, so the decoded value could be interpreted differently on a second pass.
+_STRUCTURAL_BYTES = frozenset(b"%./\\")
 
 
 def _reject_ambiguous_input(path: str) -> str:
@@ -16,19 +19,16 @@ def _reject_ambiguous_input(path: str) -> str:
     if "\\" in path:
         raise InvalidPath()
 
-    percent_count = path.count("%")
-    if percent_count != len(_PERCENT_ESCAPE.findall(path)):
+    escapes = _PERCENT_ESCAPE.findall(path)
+    if path.count("%") != len(escapes):
         raise InvalidPath()
-
-    decoded = path
-    try:
-        for _ in range(2):
-            next_value = urllib.parse.unquote(decoded, errors="strict")
-            if next_value == decoded:
-                break
-            decoded = next_value
-        if urllib.parse.unquote(decoded, errors="strict") != decoded:
+    for escape in escapes:
+        byte = int(escape[1:], 16)
+        if byte in _STRUCTURAL_BYTES or byte < 32 or byte == 127:
             raise InvalidPath()
+
+    try:
+        decoded = urllib.parse.unquote(path, errors="strict")
     except (UnicodeDecodeError, ValueError) as exc:
         raise InvalidPath() from exc
 
