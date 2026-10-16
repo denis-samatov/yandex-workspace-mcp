@@ -20,6 +20,22 @@ This server provides a unified interface for AI assistants to search, read, and 
 | **Quality** | Security and permission regression tests, opt-in live contract sweep, CI, Docker. |
 | **Limits** | The offline demo uses a mocked upstream; it does not validate live API parity or load capacity. |
 
+## Try it without credentials
+
+```bash
+git clone https://github.com/denis-samatov/yandex-workspace-mcp && cd yandex-workspace-mcp
+uv sync --frozen
+uv run python examples/permission_demo.py
+```
+
+No token and no network calls. Expected status lines (audit log records are printed too):
+
+```text
+READ_ONLY_WRITE: denied; upstream calls=0
+OUTSIDE_ALLOWED_ROOT: denied; upstream calls=0
+ALLOWED_WRITE: accepted by mock; upstream calls=1
+```
+
 ## Start here
 
 - **Review the engineering:** run the [credential-free permission demo](examples/permission_demo.py) and inspect [permission regression tests](tests/security/test_permission_gating.py).
