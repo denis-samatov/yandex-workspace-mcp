@@ -24,10 +24,7 @@ jobs:
       - run: uv sync --locked --dev
       - run: uv run pytest -q
       - run: uv run ruff check .
-      - name: Check formatting without rewriting preserved baseline files
-        run: >-
-          uv run ruff format --check .
-          --exclude tests/security/test_ssrf.py
+      - run: uv run ruff format --check .
       - run: uv run mypy src tests
       - name: Verify generated schemas
         shell: bash

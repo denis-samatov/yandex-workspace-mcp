@@ -232,3 +232,21 @@ Add the following to your MCP client's configuration file:
   }
 }
 ```
+
+## Qualification status
+
+This is a permission-aware server with offline contract and security tests. A green
+ordinary CI run is not evidence of a completed live Yandex contract sweep or an
+operational production deployment. Before remote use, validate the current locked
+environment, actual provider contracts in dedicated scratch roots, unconditional
+cleanup, encrypted-store recovery, and the target workload. Wiki updates have no
+upstream revision precondition; concurrent independent writers can lose changes.
+Use a controlled single-writer workflow until a provider-backed conflict contract
+has been qualified.
+
+The runtime requires MCP SDK 2.3+ and explicitly checks the token resource. Updating
+the SDK alone does not enable that check: see the
+[upstream authorization contract](https://github.com/modelcontextprotocol/python-sdk/blob/main/docs/run/authorization.md).
+Static keys must be unique to their deployment; multi-user access records preserve
+their issued resource. No live credentials or user documents are required by the
+ordinary test suite.

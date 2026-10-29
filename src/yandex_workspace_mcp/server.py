@@ -49,13 +49,18 @@ from .tools import register_common_tools, register_disk_tools, register_wiki_too
 
 
 class StaticTokenVerifier(TokenVerifier):
-    def __init__(self, expected_token: str, scopes: list[str] | None = None):
+    def __init__(
+        self, expected_token: str, scopes: list[str] | None = None, *, resource: str | None = None
+    ):
         self.expected_token = expected_token
         self.scopes = scopes or []
+        self.resource = resource
 
     async def verify_token(self, token: str) -> AccessToken | None:
         if hmac.compare_digest(token, self.expected_token):
-            return AccessToken(token=token, client_id="static-client", scopes=self.scopes)
+            return AccessToken(
+                token=token, client_id="static-client", scopes=self.scopes, resource=self.resource
+            )
         return None
 
 
@@ -464,17 +469,20 @@ def create_application(
         token_verifier = StaticTokenVerifier(
             settings.mcp_auth_token.get_secret_value(),
             scopes=[scope.value for scope in principal_scopes],
+            resource=settings.mcp_resource_server_url,
         )
         auth_settings = AuthSettings(
             issuer_url=AnyHttpUrl(settings.mcp_issuer_url),
             resource_server_url=AnyHttpUrl(settings.mcp_resource_server_url),
             required_scopes=[],
+            validate_token_resource=True,
         )
     elif settings.mcp_auth_mode is McpAuthMode.MULTI_USER:
         auth_settings = AuthSettings(
             issuer_url=AnyHttpUrl(settings.mcp_issuer_url),
             resource_server_url=AnyHttpUrl(settings.mcp_resource_server_url),
             required_scopes=[],
+            validate_token_resource=True,
             client_registration_options=ClientRegistrationOptions(
                 enabled=True,
                 valid_scopes=list(oauth_provider.valid_scopes) if oauth_provider else [],
