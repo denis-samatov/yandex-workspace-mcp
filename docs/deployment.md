@@ -29,3 +29,10 @@ Back up Redis consistently with the active encryption-key ring. Rotate by prepen
 - A passing health check does not verify Yandex credentials or live API compatibility.
 - Live contract tests require dedicated scratch roots and explicit secrets. They are not part of ordinary pull-request CI.
 - Do not import the module singleton in tests or embedding code. Build isolated instances with `create_application(settings, dependencies)` and enter their lifespan.
+
+### Operation deadline
+
+API requests enforce the remaining overall operation deadline, including credential
+lookup/refresh and an in-flight response; per-socket inactivity timeouts alone cannot bound a slow stream. A mutation
+timeout does not prove the upstream rejected it. Mutations are never automatically
+retried: reconcile remote state before a separately authorized retry.

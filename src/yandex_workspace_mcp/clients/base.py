@@ -93,22 +93,35 @@ class BaseYandexClient:
         request_headers = dict(kwargs.pop("headers", {}) or {})
         selected_credentials = credentials or self._default_credentials
         if selected_credentials is None and self._credential_provider is not None:
-            selected_credentials = await self._credential_provider()
+            remaining = operation_timeout - (self._clock() - started_at)
+            if remaining <= 0:
+                raise UpstreamTimeout()
+            try:
+                with anyio.fail_after(remaining):
+                    selected_credentials = await self._credential_provider()
+            except TimeoutError:
+                raise UpstreamTimeout() from None
         if selected_credentials:
             request_headers.update(selected_credentials.headers)
             request_headers["Authorization"] = selected_credentials.authorization
 
         last_transport_error: httpx.TransportError | None = None
         for attempt in range(max_attempts):
-            if attempt and self._clock() - started_at >= operation_timeout:
+            remaining = operation_timeout - (self._clock() - started_at)
+            if remaining <= 0:
                 raise UpstreamTimeout()
             try:
-                response = await self.client.request(
-                    method,
-                    path,
-                    headers=request_headers or None,
-                    **kwargs,
-                )
+                with anyio.fail_after(remaining):
+                    response = await self.client.request(
+                        method,
+                        path,
+                        headers=request_headers or None,
+                        **kwargs,
+                    )
+            except TimeoutError:
+                # A socket inactivity timeout does not bound a slowly streaming
+                # response; enforce the remaining operation deadline as well.
+                raise UpstreamTimeout() from None
             except httpx.TransportError as exc:
                 last_transport_error = exc
                 if not safe or attempt == max_attempts - 1:
