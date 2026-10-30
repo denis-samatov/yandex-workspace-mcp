@@ -93,7 +93,14 @@ class BaseYandexClient:
         request_headers = dict(kwargs.pop("headers", {}) or {})
         selected_credentials = credentials or self._default_credentials
         if selected_credentials is None and self._credential_provider is not None:
-            selected_credentials = await self._credential_provider()
+            remaining = operation_timeout - (self._clock() - started_at)
+            if remaining <= 0:
+                raise UpstreamTimeout()
+            try:
+                with anyio.fail_after(remaining):
+                    selected_credentials = await self._credential_provider()
+            except TimeoutError:
+                raise UpstreamTimeout() from None
         if selected_credentials:
             request_headers.update(selected_credentials.headers)
             request_headers["Authorization"] = selected_credentials.authorization

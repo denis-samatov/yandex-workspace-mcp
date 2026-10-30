@@ -32,7 +32,7 @@ Back up Redis consistently with the active encryption-key ring. Rotate by prepen
 
 ### Operation deadline
 
-API requests enforce the remaining overall operation deadline, including an in-flight
-response; per-socket inactivity timeouts alone cannot bound a slow stream. A mutation
+API requests enforce the remaining overall operation deadline, including credential
+lookup/refresh and an in-flight response; per-socket inactivity timeouts alone cannot bound a slow stream. A mutation
 timeout does not prove the upstream rejected it. Mutations are never automatically
 retried: reconcile remote state before a separately authorized retry.

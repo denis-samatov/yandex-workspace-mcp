@@ -4,6 +4,7 @@ import importlib
 import httpx
 import pytest
 
+from yandex_workspace_mcp.clients.base import RequestCredentials
 from yandex_workspace_mcp.models.errors import UpstreamTimeout, UpstreamUnavailable
 
 
@@ -228,5 +229,38 @@ async def test_operation_deadline_cancels_inflight_response() -> None:
         with pytest.raises(UpstreamTimeout):
             await client._request("POST", "/resource", operation_timeout=0.01)
         assert cancelled
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_operation_deadline_cancels_credential_resolution() -> None:
+    base = importlib.import_module("yandex_workspace_mcp.clients.base")
+    cancelled = False
+    dispatched = False
+
+    async def credentials() -> RequestCredentials:
+        nonlocal cancelled
+        try:
+            await asyncio.sleep(0.1)
+            return base.RequestCredentials(token="synthetic")
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal dispatched
+        dispatched = True
+        return httpx.Response(200, request=request)
+
+    client = base.BaseYandexClient(
+        credential_provider=credentials,
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    try:
+        with pytest.raises(UpstreamTimeout):
+            await client._request("POST", "https://api.example.test/write", operation_timeout=0.01)
+        assert cancelled
+        assert not dispatched
     finally:
         await client.close()
