@@ -208,3 +208,25 @@ async def test_request_credentials_are_isolated_per_concurrent_call() -> None:
     assert observed == {"/one": "OAuth token-one", "/two": "OAuth token-two"}
     assert "Authorization" not in client.client.headers
     await client.close()
+
+
+@pytest.mark.asyncio
+async def test_operation_deadline_cancels_inflight_response() -> None:
+    cancelled = False
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal cancelled
+        try:
+            await asyncio.sleep(0.1)
+            return httpx.Response(200, request=request)
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+
+    client = _client(httpx.MockTransport(handler))
+    try:
+        with pytest.raises(UpstreamTimeout):
+            await client._request("POST", "/resource", operation_timeout=0.01)
+        assert cancelled
+    finally:
+        await client.close()
